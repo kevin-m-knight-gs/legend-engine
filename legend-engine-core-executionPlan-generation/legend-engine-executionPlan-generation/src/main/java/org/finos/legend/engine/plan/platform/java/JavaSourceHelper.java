@@ -14,6 +14,12 @@
 
 package org.finos.legend.engine.plan.platform.java;
 
+import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.factory.SortedMaps;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.impl.factory.Sets;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.CompositeExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
@@ -21,20 +27,16 @@ import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.nodes.Execut
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.nodes.JavaClass;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.nodes.JavaPlatformImplementation;
 
-import javax.lang.model.SourceVersion;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
+import javax.lang.model.SourceVersion;
+import javax.tools.JavaFileObject;
 
 public class JavaSourceHelper
 {
@@ -76,47 +78,56 @@ public class JavaSourceHelper
         }
 
         StringBuilder builder = null;
-        boolean lastCharReplaced = false;
-        if (!Character.isJavaIdentifierStart(string.charAt(0)))
+        int start = 0;
+        int index = 0;
+
+        // Handle the first code point
+        int cp = string.codePointAt(0);
+        if (!Character.isJavaIdentifierStart(cp))
         {
-            if (!Character.isJavaIdentifierStart(replacement))
+            builder = new StringBuilder(length + 1).append(replacement);
+            index += Character.charCount(cp);
+            if (!Character.isJavaIdentifierPart(cp))
             {
-                throw new IllegalStateException("First character ('" + string.charAt(0) + "') needs replacement, but replacement character ('" + replacement + "') is not a valid Java identifier start");
+                start = index;
             }
-            if (Character.isJavaIdentifierPart(string.charAt(0)))
-            {
-                builder = new StringBuilder(length + 1).append(replacement).append(string.charAt(0));
-            }
-            else
-            {
-                builder = new StringBuilder(length).append(replacement);
-            }
-            lastCharReplaced = true;
         }
-        for (int i = 1; i < length; i++)
+
+        // Handle the rest
+        while (index < length)
         {
-            if (Character.isJavaIdentifierPart(string.charAt(i)))
+            cp = string.codePointAt(index);
+            if (Character.isJavaIdentifierPart(cp))
             {
-                if (builder != null)
-                {
-                    builder.append(string.charAt(i));
-                }
-                lastCharReplaced = false;
+                index += Character.charCount(cp);
             }
             else
             {
                 if (builder == null)
                 {
-                    builder = new StringBuilder(length).append(string, 0, i);
+                    builder = new StringBuilder(length);
                 }
-                if (!compressAdjacentReplacements || !lastCharReplaced)
+                if (start < index)
+                {
+                    builder.append(string, start, index).append(replacement);
+                }
+                else if (!compressAdjacentReplacements)
                 {
                     builder.append(replacement);
                 }
-                lastCharReplaced = true;
+                index += Character.charCount(cp);
+                start = index;
             }
         }
-        return (builder == null) ? string : builder.toString();
+        if (builder == null)
+        {
+            return string;
+        }
+        if (start < length)
+        {
+            builder.append(string, start, length);
+        }
+        return builder.toString();
     }
 
     public static void writeJavaSourceFiles(Path sourceDirectory, ExecutionPlan... plans)
@@ -172,21 +183,21 @@ public class JavaSourceHelper
 
     public static Map<String, String> getJavaSourceCodeByRelativeFilePath(Stream<? extends ExecutionPlan> plans, String pathSeparator)
     {
-        Map<String, String> map = new HashMap<>();
-        Map<String, Set<String>> conflicts = new TreeMap<>();
+        MutableMap<String, String> map = Maps.mutable.empty();
+        MutableSortedMap<String, MutableSet<String>> conflicts = SortedMaps.mutable.empty();
         forEachJavaClassByRelativeFilePath(plans, pathSeparator, (path, source) ->
         {
-            String current = map.putIfAbsent(path, source);
-            if ((current != null) && !current.equals(source))
+            String current = map.getIfAbsentPut(path, source);
+            if (!source.equals(current))
             {
-                conflicts.computeIfAbsent(path, x -> new HashSet<>(Collections.singleton(current))).add(source);
+                conflicts.getIfAbsentPut(path, () -> Sets.mutable.with(current)).add(source);
             }
         });
-        if (!conflicts.isEmpty())
+        if (conflicts.notEmpty())
         {
             StringBuilder builder = new StringBuilder("Conflicting sources for ");
             int length = builder.length();
-            conflicts.forEach((path, sources) -> ((builder.length() == length) ? builder : builder.append(", ")).append(path).append(" (").append(sources.size()).append(")"));
+            conflicts.forEachKeyValue((path, sources) -> ((builder.length() == length) ? builder : builder.append(", ")).append(path).append(" (").append(sources.size()).append(")"));
             throw new RuntimeException(builder.toString());
         }
         return map;
@@ -260,17 +271,29 @@ public class JavaSourceHelper
         javaPlatformImpl.classes = null;
     }
 
-    private static String getJavaFileRelativePath(JavaClass javaClass, String separator)
+    public static Path getJavaFilePath(JavaClass javaClass, Path root)
+    {
+        return root.resolve(getJavaFileRelativePath(javaClass, root.getFileSystem().getSeparator()));
+    }
+
+    public static String getJavaFileRelativePath(JavaClass javaClass, String separator)
     {
         if ((javaClass._package == null) || javaClass._package.isEmpty())
         {
-            return javaClass.name + ".java";
+            return javaClass.name + JavaFileObject.Kind.SOURCE.extension;
         }
         if (separator.length() == 1)
         {
-            return javaClass._package.replace('.', separator.charAt(0)) + separator + javaClass.name + ".java";
+            return javaClass._package.replace('.', separator.charAt(0)) + separator + javaClass.name + JavaFileObject.Kind.SOURCE.extension;
         }
-        return javaClass._package.replace(".", separator) + separator + javaClass.name + ".java";
+        return javaClass._package.replace(".", separator) + separator + javaClass.name + JavaFileObject.Kind.SOURCE.extension;
+    }
+
+    public static String getJavaClassName(JavaClass javaClass)
+    {
+        return ((javaClass._package == null) || javaClass._package.isEmpty()) ?
+                javaClass.name :
+                (javaClass._package + "." + javaClass.name);
     }
 
     private static boolean fileHasContent(Path path, byte[] content) throws IOException
