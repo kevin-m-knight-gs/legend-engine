@@ -51,10 +51,10 @@ public class TestJavaSourceHelper
         Assert.assertEquals("_3", JavaSourceHelper.toValidJavaIdentifier("3"));
         Assert.assertEquals("$", JavaSourceHelper.toValidJavaIdentifier("%", '$'));
 
-        // Two unicode characters U+2200 (logical for all) and U+2203 (logical there exists)
+        // Two unicode characters U+2200 (logical for all) and U+2203 (logical there exists): separate codepoints
         Assert.assertEquals("abcdefg$$hij", JavaSourceHelper.toValidJavaIdentifier("abcdefg\u2200\u2203hij", '$', false));
 
-        // Single supplementary unicode character: U+1F729 (alchemical symbol for tin ore); represented as a sequence of two 16-bit characters: U+D83D U+DF29
+        // Single supplementary unicode character: U+1F729 (alchemical symbol for tin ore); single codepoint represented as a sequence of two 16-bit characters: U+D83D U+DF29
         Assert.assertEquals("abcdefg$hij", JavaSourceHelper.toValidJavaIdentifier("abcdefg\uD83D\uDF29hij", '$', false));
     }
 
@@ -89,16 +89,9 @@ public class TestJavaSourceHelper
 
     private JavaClass newJavaClass(String pkg, String name)
     {
-        return newJavaClass(pkg, name, null, null);
-    }
-
-    private JavaClass newJavaClass(String pkg, String name, String source, String bytecode)
-    {
         JavaClass javaClass = new JavaClass();
         javaClass._package = pkg;
         javaClass.name = name;
-        javaClass.source = source;
-        javaClass.byteCode = bytecode;
         return javaClass;
     }
 }

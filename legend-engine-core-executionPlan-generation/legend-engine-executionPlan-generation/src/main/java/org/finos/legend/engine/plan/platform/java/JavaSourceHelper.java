@@ -15,11 +15,11 @@
 package org.finos.legend.engine.plan.platform.java;
 
 import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.factory.SortedMaps;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.map.sorted.MutableSortedMap;
 import org.eclipse.collections.api.set.MutableSet;
-import org.eclipse.collections.impl.factory.Sets;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.CompositeExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import javax.lang.model.SourceVersion;
 import javax.tools.JavaFileObject;
@@ -258,7 +259,7 @@ public class JavaSourceHelper
     {
         if ((javaPlatformImpl.code != null) || (javaPlatformImpl.compiledClasses != null) || (javaPlatformImpl.byteCode != null))
         {
-            throw new RuntimeException("Unsupported JavaPlatformImplementation: " + javaPlatformImpl);
+            throw new UnsupportedOperationException("Unsupported JavaPlatformImplementation: " + javaPlatformImpl);
         }
         return (javaPlatformImpl.classes == null) ? null : javaPlatformImpl.classes.stream();
     }
@@ -269,6 +270,18 @@ public class JavaSourceHelper
         javaPlatformImpl.compiledClasses = null;
         javaPlatformImpl.byteCode = null;
         javaPlatformImpl.classes = null;
+    }
+
+    private static void replaceExecutionClassName(JavaPlatformImplementation javaPlatformImpl, Function<? super String, ? extends String> replaceFn)
+    {
+        if (javaPlatformImpl.executionClassFullName != null)
+        {
+            String replacement = replaceFn.apply(javaPlatformImpl.executionClassFullName);
+            if (replacement != null)
+            {
+                javaPlatformImpl.executionClassFullName = replacement;
+            }
+        }
     }
 
     public static Path getJavaFilePath(JavaClass javaClass, Path root)
