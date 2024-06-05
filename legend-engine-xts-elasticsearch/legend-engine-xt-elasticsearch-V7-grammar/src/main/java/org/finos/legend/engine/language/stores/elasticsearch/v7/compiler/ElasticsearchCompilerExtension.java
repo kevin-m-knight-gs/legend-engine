@@ -15,21 +15,15 @@
 
 package org.finos.legend.engine.language.stores.elasticsearch.v7.compiler;
 
-import java.util.Collections;
-import java.util.List;
 import org.eclipse.collections.api.block.function.Function;
 import org.eclipse.collections.api.block.function.Function2;
-import org.eclipse.collections.api.block.procedure.Procedure;
-import org.eclipse.collections.api.block.procedure.Procedure2;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.CompileContext;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.extension.CompilerExtension;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.extension.Processor;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.handlers.FunctionHandlerRegistrationInfo;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.handlers.Handlers;
-import org.finos.legend.engine.protocol.pure.PureClientVersions;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
 import org.finos.legend.engine.protocol.store.elasticsearch.v7.metamodel.executionPlan.context.Elasticsearch7ExecutionContext;
@@ -38,12 +32,15 @@ import org.finos.legend.engine.protocol.store.elasticsearch.v7.metamodel.store.E
 import org.finos.legend.pure.generated.Root_meta_core_runtime_Connection;
 import org.finos.legend.pure.generated.Root_meta_pure_runtime_ExecutionContext;
 
+import java.util.Collections;
+import java.util.List;
+
 public class ElasticsearchCompilerExtension implements CompilerExtension
 {
     @Override
     public MutableList<String> group()
     {
-        return org.eclipse.collections.impl.factory.Lists.mutable.with("Store", "Elastic");
+        return Lists.mutable.with("Store", "Elastic");
     }
 
     @Override
@@ -94,21 +91,6 @@ public class ElasticsearchCompilerExtension implements CompilerExtension
                 return HelperElasticsearchBuilder.buildExecutionContext((Elasticsearch7ExecutionContext) executionContext, context);
             }
             return null;
-        });
-    }
-
-    @Override
-    public List<Procedure<Procedure2<String, List<String>>>> getExtraElementForPathToElementRegisters()
-    {
-        return Collections.singletonList(registerElementForPathToElement ->
-        {
-            // we will support protocol after 1_30_0
-            ImmutableList<String> versions = PureClientVersions.versionsSinceExclusive("v1_30_0");
-            versions.forEach(v -> registerElementForPathToElement.value(
-                            "meta::external::store::elasticsearch::v7::protocol::" + v,
-                            Collections.singletonList("elasticsearchV7StoreExtension_String_1__SerializerExtension_1_")
-                    )
-            );
         });
     }
 }

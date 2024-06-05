@@ -15,19 +15,14 @@
 package org.finos.legend.engine.language.pure.compiler.toPureGraph;
 
 import org.eclipse.collections.api.block.function.Function;
-import org.eclipse.collections.api.block.procedure.Procedure;
-import org.eclipse.collections.api.block.procedure.Procedure2;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
-import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.external.shared.format.model.ExternalFormatExtension;
 import org.finos.legend.engine.external.shared.format.model.ExternalFormatExtensionLoader;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.extension.CompilerExtension;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.extension.Processor;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.handlers.FunctionExpressionBuilderRegistrationInfo;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.handlers.Handlers;
-import org.finos.legend.engine.protocol.pure.PureClientVersions;
 
 import java.util.Collections;
 import java.util.List;
@@ -41,15 +36,15 @@ public class ExternalFormatCompilerExtension implements CompilerExtension
 
     public ExternalFormatCompilerExtension()
     {
-        externalFormatExtensions = ExternalFormatExtensionLoader.extensions();
-        schemaSetCompiler = new SchemaSetCompiler(externalFormatExtensions);
-        bindingCompiler = new BindingCompiler(externalFormatExtensions);
+        this.externalFormatExtensions = ExternalFormatExtensionLoader.extensions();
+        this.schemaSetCompiler = new SchemaSetCompiler(this.externalFormatExtensions);
+        this.bindingCompiler = new BindingCompiler(this.externalFormatExtensions);
     }
 
     @Override
     public MutableList<String> group()
     {
-        return org.eclipse.collections.impl.factory.Lists.mutable.with("External_Format", "-Core");
+        return Lists.mutable.with("External_Format", "-Core");
     }
 
     @Override
@@ -61,15 +56,7 @@ public class ExternalFormatCompilerExtension implements CompilerExtension
     @Override
     public Iterable<? extends Processor<?>> getExtraProcessors()
     {
-        return Lists.immutable.with(schemaSetCompiler.getProcessor(), bindingCompiler.getProcessor());
-    }
-
-    @Override
-    public List<Procedure<Procedure2<String, List<String>>>> getExtraElementForPathToElementRegisters()
-    {
-        ImmutableList<String> versions = PureClientVersions.versionsSince("v1_24_0");
-        List<String> elements = versions.collect(v -> "meta::protocols::pure::" + v + "::external::shared::format::serializerExtension_String_1__SerializerExtension_1_").toList();
-        return ListIterate.collect(elements, this::registerElement);
+        return Lists.immutable.with(this.schemaSetCompiler.getProcessor(), this.bindingCompiler.getProcessor());
     }
 
     @Override
@@ -89,7 +76,7 @@ public class ExternalFormatCompilerExtension implements CompilerExtension
                                 )
                         ),
                         new FunctionExpressionBuilderRegistrationInfo(null,
-                                handlers.m(handlers.h("meta::pure::dataQuality::defaultDefectTree__RootGraphFetchTree_1_", false, ps -> handlers.res("meta::pure::graphFetch::RootGraphFetchTree", "one"), ps -> ps.size() == 0))
+                                handlers.m(handlers.h("meta::pure::dataQuality::defaultDefectTree__RootGraphFetchTree_1_", false, ps -> handlers.res("meta::pure::graphFetch::RootGraphFetchTree", "one"), List::isEmpty))
                         ),
                         new FunctionExpressionBuilderRegistrationInfo(null,
                                 handlers.m(
@@ -100,16 +87,5 @@ public class ExternalFormatCompilerExtension implements CompilerExtension
                                         handlers.m(handlers.h("meta::external::format::shared::functions::checked_RootGraphFetchTree_1__String_1__RootGraphFetchTree_1_", false, ps -> handlers.res("meta::pure::graphFetch::RootGraphFetchTree", "one"), ps -> ps.size() == 2 && "String".equals(ps.get(1)._genericType()._rawType()._name()))))
                         )
                 ));
-    }
-
-    private Procedure<Procedure2<String, List<String>>> registerElement(String element)
-    {
-        int pos = element.lastIndexOf("::");
-        String pkg = element.substring(0, pos);
-        String name = element.substring(pos + 2);
-        return (Procedure2<String, List<String>> registerElementForPathToElement) ->
-        {
-            registerElementForPathToElement.value(pkg, Lists.mutable.with(name));
-        };
     }
 }

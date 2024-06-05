@@ -17,11 +17,10 @@ package org.finos.legend.engine.language.pure.grammar.integration;
 import org.eclipse.collections.api.RichIterable;
 import org.eclipse.collections.api.block.function.Function2;
 import org.eclipse.collections.api.block.function.Function3;
-import org.eclipse.collections.api.block.procedure.Procedure;
-import org.eclipse.collections.api.block.procedure.Procedure2;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.api.tuple.Pair;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.finos.legend.engine.external.shared.format.model.ExternalFormatExtension;
@@ -34,27 +33,34 @@ import org.finos.legend.engine.language.pure.grammar.integration.util.MongoDBCom
 import org.finos.legend.engine.protocol.mongodb.schema.metamodel.pure.MongoDBConnection;
 import org.finos.legend.engine.protocol.mongodb.schema.metamodel.pure.MongoDatabase;
 import org.finos.legend.engine.protocol.mongodb.schema.metamodel.pure.RootMongoDBClassMapping;
-import org.finos.legend.engine.protocol.pure.PureClientVersions;
 import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.externalFormat.Binding;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
-import org.finos.legend.pure.generated.*;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.*;
+import org.finos.legend.pure.generated.Root_meta_core_runtime_Connection;
+import org.finos.legend.pure.generated.Root_meta_external_format_shared_binding_Binding;
+import org.finos.legend.pure.generated.Root_meta_external_format_shared_binding_validation_BindingDetail;
+import org.finos.legend.pure.generated.Root_meta_external_format_shared_binding_validation_SuccessfulBindingDetail;
+import org.finos.legend.pure.generated.Root_meta_external_store_mongodb_metamodel_pure_MongoDBSetImplementation;
+import org.finos.legend.pure.generated.Root_meta_external_store_mongodb_metamodel_pure_MongoDatabase;
+import org.finos.legend.pure.generated.Root_meta_external_store_mongodb_metamodel_pure_MongoDatabase_Impl;
+import org.finos.legend.pure.generated.Root_meta_pure_metamodel_type_generics_GenericType_Impl;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.EmbeddedSetImplementation;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.PropertyMapping;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.SetImplementation;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.Class;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class MongoDBCompilerExtension implements IMongoDBStoreCompilerExtension
 {
     @Override
     public MutableList<String> group()
     {
-        return org.eclipse.collections.impl.factory.Lists.mutable.with("Store", "Mongo");
+        return Lists.mutable.with("Store", "Mongo");
     }
 
     @Override
@@ -109,13 +115,13 @@ public class MongoDBCompilerExtension implements IMongoDBStoreCompilerExtension
                     if (cm instanceof RootMongoDBClassMapping)
                     {
                         RootMongoDBClassMapping classMapping = (RootMongoDBClassMapping) cm;
-                        Set<Class<?>> processedClasses = new HashSet<>();
+                        MutableSet<Class<?>> processedClasses = Sets.mutable.empty();
 
                         Root_meta_external_format_shared_binding_Binding binding = ((Root_meta_external_format_shared_binding_Binding)context.pureModel.getPackageableElement(((RootMongoDBClassMapping) cm).bindingPath, cm.sourceInformation));
                         MutableList<EmbeddedSetImplementation> embeddedSetImplementations = org.eclipse.collections.impl.factory.Lists.mutable.empty();
                         Root_meta_external_store_mongodb_metamodel_pure_MongoDBSetImplementation mongoDBSetImplementation = MongoDBCompilerHelper.createMongoDBSetImplementation(classMapping, context, parentMapping, cm, binding);
 
-                        ExternalFormatExtension schemaExtension = HelperExternalFormat.getExternalFormatExtension(binding);
+                        ExternalFormatExtension<?> schemaExtension = HelperExternalFormat.getExternalFormatExtension(binding);
                         Root_meta_external_format_shared_binding_validation_BindingDetail bindingDetail = schemaExtension.bindDetails(binding, context);
 
                         if (bindingDetail instanceof Root_meta_external_format_shared_binding_validation_SuccessfulBindingDetail)
@@ -133,19 +139,5 @@ public class MongoDBCompilerExtension implements IMongoDBStoreCompilerExtension
                     return null;
                 }
         );
-    }
-
-    @Override
-    public List<Procedure<Procedure2<String, List<String>>>> getExtraElementForPathToElementRegisters()
-    {
-        return Collections.singletonList(registerElementForPathToElement ->
-        {
-            ImmutableList<String> versions = PureClientVersions.versionsSinceExclusive("v1_31_0");
-            versions.forEach(v -> registerElementForPathToElement.value(
-                            "meta::protocols::pure::" + v + "::extension::store::mongodb",
-                            Collections.singletonList("getMongoDBStoreExtension_String_1__SerializerExtension_1_")
-                    )
-            );
-        });
     }
 }

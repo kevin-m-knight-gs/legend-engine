@@ -17,16 +17,12 @@ package org.finos.legend.engine.language.pure.compiler.toPureGraph;
 import org.eclipse.collections.api.RichIterable;
 import org.eclipse.collections.api.block.function.Function2;
 import org.eclipse.collections.api.block.function.Function3;
-import org.eclipse.collections.api.block.procedure.Procedure;
-import org.eclipse.collections.api.block.procedure.Procedure2;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.tuple.Pair;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.data.ServiceStoreEmbeddedDataCompiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.extension.CompilerExtension;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.extension.Processor;
-import org.finos.legend.engine.protocol.pure.PureClientVersions;
 import org.finos.legend.engine.protocol.pure.v1.model.data.EmbeddedData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.externalFormat.Binding;
@@ -34,7 +30,13 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.service.connection.ServiceStoreConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.service.mapping.RootServiceStoreClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.service.model.ServiceStore;
-import org.finos.legend.pure.generated.*;
+import org.finos.legend.pure.generated.Root_meta_core_runtime_Connection;
+import org.finos.legend.pure.generated.Root_meta_external_store_service_metamodel_ServiceStore;
+import org.finos.legend.pure.generated.Root_meta_external_store_service_metamodel_ServiceStore_Impl;
+import org.finos.legend.pure.generated.Root_meta_external_store_service_metamodel_runtime_ServiceStoreConnection;
+import org.finos.legend.pure.generated.Root_meta_external_store_service_metamodel_runtime_ServiceStoreConnection_Impl;
+import org.finos.legend.pure.generated.Root_meta_pure_data_EmbeddedData;
+import org.finos.legend.pure.generated.Root_meta_pure_metamodel_type_generics_GenericType_Impl;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.EmbeddedSetImplementation;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.SetImplementation;
@@ -47,7 +49,7 @@ public class ServiceStoreCompilerExtension implements IServiceStoreCompilerExten
     @Override
     public MutableList<String> group()
     {
-        return org.eclipse.collections.impl.factory.Lists.mutable.with("Store", "Service");
+        return Lists.mutable.with("Store", "Service");
     }
 
     @Override
@@ -101,7 +103,7 @@ public class ServiceStoreCompilerExtension implements IServiceStoreCompilerExten
     @Override
     public List<Function2<Connection, CompileContext, Root_meta_core_runtime_Connection>> getExtraConnectionValueProcessors()
     {
-        return Lists.mutable.with(
+        return Collections.singletonList(
                 (connectionValue, context) ->
                 {
                     if (connectionValue instanceof ServiceStoreConnection)
@@ -118,21 +120,6 @@ public class ServiceStoreCompilerExtension implements IServiceStoreCompilerExten
                     return null;
                 }
         );
-    }
-
-    @Override
-    public List<Procedure<Procedure2<String, List<String>>>> getExtraElementForPathToElementRegisters()
-    {
-        return Collections.singletonList(registerElementForPathToElement ->
-        {
-            registerElementForPathToElement.value("meta::external::store::service::contract", Lists.mutable.with(
-                    "supports_FunctionExpression_1__Boolean_1_",
-                    "planExecution_StoreQuery_1__RoutedValueSpecification_$0_1$__Mapping_$0_1$__Runtime_$0_1$__ExecutionContext_1__Extension_MANY__DebugContext_1__ExecutionNode_1_"
-            ));
-
-            ImmutableList<String> versions = PureClientVersions.versionsSince("v1_21_0");
-            versions.forEach(v -> registerElementForPathToElement.value("meta::protocols::pure::" + v + "::extension::store::service", Lists.mutable.with("getServiceStoreExtension_String_1__SerializerExtension_1_")));
-        });
     }
 
     @Override
