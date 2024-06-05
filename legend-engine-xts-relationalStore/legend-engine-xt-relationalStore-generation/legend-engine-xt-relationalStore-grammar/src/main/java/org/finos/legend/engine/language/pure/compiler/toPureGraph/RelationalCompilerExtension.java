@@ -18,11 +18,9 @@ import org.eclipse.collections.api.RichIterable;
 import org.eclipse.collections.api.block.function.Function;
 import org.eclipse.collections.api.block.function.Function2;
 import org.eclipse.collections.api.block.function.Function3;
-import org.eclipse.collections.api.block.procedure.Procedure;
 import org.eclipse.collections.api.block.procedure.Procedure2;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
-import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.multimap.Multimap;
@@ -41,7 +39,6 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.handlers.Funct
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.handlers.Handlers;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.validation.RelationalValidator;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.validator.MappingValidatorContext;
-import org.finos.legend.engine.protocol.pure.PureClientVersions;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.data.EmbeddedData;
@@ -87,6 +84,7 @@ import org.finos.legend.pure.generated.Root_meta_external_store_relational_runti
 import org.finos.legend.pure.generated.Root_meta_external_store_relational_runtime_RelationalDatabaseConnection_Impl;
 import org.finos.legend.pure.generated.Root_meta_pure_alloy_connections_MapperPostProcessor;
 import org.finos.legend.pure.generated.Root_meta_pure_alloy_connections_PostProcessor;
+import org.finos.legend.pure.generated.Root_meta_pure_alloy_connections_RelationalMapperPostProcessor;
 import org.finos.legend.pure.generated.Root_meta_pure_alloy_connections_alloy_authentication_AuthenticationStrategy;
 import org.finos.legend.pure.generated.Root_meta_pure_alloy_connections_alloy_specification_DatasourceSpecification;
 import org.finos.legend.pure.generated.Root_meta_pure_data_EmbeddedData;
@@ -98,19 +96,18 @@ import org.finos.legend.pure.generated.Root_meta_pure_store_RelationStoreAccesso
 import org.finos.legend.pure.generated.Root_meta_relational_mapping_GroupByMapping_Impl;
 import org.finos.legend.pure.generated.Root_meta_relational_mapping_RelationalAssociationImplementation_Impl;
 import org.finos.legend.pure.generated.Root_meta_relational_mapping_RootRelationalInstanceSetImplementation_Impl;
+import org.finos.legend.pure.generated.Root_meta_relational_metamodel_DatabaseMapper;
+import org.finos.legend.pure.generated.Root_meta_relational_metamodel_DatabaseMapper_Impl;
 import org.finos.legend.pure.generated.Root_meta_relational_metamodel_Database_Impl;
+import org.finos.legend.pure.generated.Root_meta_relational_metamodel_RelationalMapper;
+import org.finos.legend.pure.generated.Root_meta_relational_metamodel_RelationalMapper_Impl;
+import org.finos.legend.pure.generated.Root_meta_relational_metamodel_SchemaMapper;
+import org.finos.legend.pure.generated.Root_meta_relational_metamodel_SchemaMapper_Impl;
 import org.finos.legend.pure.generated.Root_meta_relational_metamodel_TableAlias_Impl;
+import org.finos.legend.pure.generated.Root_meta_relational_metamodel_TableMapper;
+import org.finos.legend.pure.generated.Root_meta_relational_metamodel_TableMapper_Impl;
 import org.finos.legend.pure.generated.Root_meta_relational_runtime_PostProcessorWithParameter;
 import org.finos.legend.pure.generated.Root_meta_relational_runtime_RelationalExecutionContext_Impl;
-import org.finos.legend.pure.generated.Root_meta_pure_alloy_connections_RelationalMapperPostProcessor;
-import org.finos.legend.pure.generated.Root_meta_relational_metamodel_RelationalMapper;
-import org.finos.legend.pure.generated.Root_meta_relational_metamodel_DatabaseMapper;
-import org.finos.legend.pure.generated.Root_meta_relational_metamodel_SchemaMapper;
-import org.finos.legend.pure.generated.Root_meta_relational_metamodel_TableMapper;
-import org.finos.legend.pure.generated.Root_meta_relational_metamodel_RelationalMapper_Impl;
-import org.finos.legend.pure.generated.Root_meta_relational_metamodel_DatabaseMapper_Impl;
-import org.finos.legend.pure.generated.Root_meta_relational_metamodel_SchemaMapper_Impl;
-import org.finos.legend.pure.generated.Root_meta_relational_metamodel_TableMapper_Impl;
 import org.finos.legend.pure.generated.core_relational_relational_runtime_connection_postprocessor;
 import org.finos.legend.pure.m2.dsl.store.M2StorePaths;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.AssociationImplementation;
@@ -130,9 +127,12 @@ import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Column;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.RelationalOperationElement;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.TableAlias;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.TableAliasAccessor;
-import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.*;
+import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.BigInt;
+import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Bit;
+import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Double;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Integer;
+import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Varchar;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.relation.NamedRelation;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.relation.Relation;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.relation.Table;
@@ -153,14 +153,12 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperModelBuilder.getElementFullPath;
-
 public class RelationalCompilerExtension implements IRelationalCompilerExtension
 {
     @Override
     public MutableList<String> group()
     {
-        return org.eclipse.collections.impl.factory.Lists.mutable.with("Store", "Relational", "-Core");
+        return Lists.mutable.with("Store", "Relational", "-Core");
     }
 
     static final MutableMap<String, Root_meta_relational_metamodel_RelationalMapper> relationalMappersIndex = Maps.mutable.empty();
@@ -176,49 +174,49 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
     {
         return Lists.immutable.with(
                 Processor.newProcessor(
-                Database.class,
-                (Database srcDatabase, CompileContext context) ->
-                {
-                    org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = new Root_meta_relational_metamodel_Database_Impl(srcDatabase.name, SourceInformationHelper.toM3SourceInformation(srcDatabase.sourceInformation), null)._name(srcDatabase.name);
+                        Database.class,
+                        (Database srcDatabase, CompileContext context) ->
+                        {
+                            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = new Root_meta_relational_metamodel_Database_Impl(srcDatabase.name, SourceInformationHelper.toM3SourceInformation(srcDatabase.sourceInformation), null)._name(srcDatabase.name);
 
-                    database._classifierGenericType(new Root_meta_pure_metamodel_type_generics_GenericType_Impl("", null, context.pureModel.getClass("meta::pure::metamodel::type::generics::GenericType"))
-                            ._rawType(context.pureModel.getType("meta::relational::metamodel::Database")));
-                    return database;
-                },
-                (Database srcDatabase, CompileContext context) ->
-                {
-                    org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(context.pureModel.buildPackageString(srcDatabase._package, srcDatabase.name), srcDatabase.sourceInformation, context);
-                    if (!srcDatabase.includedStores.isEmpty())
-                    {
-                        database._includes(ListIterate.collect(srcDatabase.includedStores, include -> HelperRelationalBuilder.resolveDatabase(context.pureModel.addPrefixToTypeReference(include), srcDatabase.sourceInformation, context)));
-                    }
-                    database._schemas(ListIterate.collect(srcDatabase.schemas, _schema -> HelperRelationalBuilder.processDatabaseSchema(_schema, context, database)));
-                },
-                (Database srcDatabase, CompileContext context) ->
-                {
-                    org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(context.pureModel.buildPackageString(srcDatabase._package, srcDatabase.name), srcDatabase.sourceInformation, context);
-                    ListIterate.forEach(srcDatabase.schemas, _schema -> HelperRelationalBuilder.processDatabaseSchemaViewsFirstPass(_schema, context, database));
-                },
-                (Database srcDatabase, CompileContext context) ->
-                {
-                    org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(context.pureModel.buildPackageString(srcDatabase._package, srcDatabase.name), srcDatabase.sourceInformation, context);
-                    // TODO checkForDuplicatesByName for filters/joins
-                    database._joins(srcDatabase.joins == null ? Lists.fixedSize.empty() : ListIterate.collect(srcDatabase.joins, join -> HelperRelationalBuilder.processDatabaseJoin(join, context, database)))
-                            ._filters(srcDatabase.filters == null ? Lists.fixedSize.empty() : ListIterate.collect(srcDatabase.filters, filter -> HelperRelationalBuilder.processDatabaseFilter(filter, context, database)))
-                            ._stereotypes(srcDatabase.stereotypes == null ? Lists.fixedSize.empty() : ListIterate.collect(srcDatabase.stereotypes, stereotypePointer -> context.resolveStereotype(stereotypePointer.profile, stereotypePointer.value, stereotypePointer.profileSourceInformation, stereotypePointer.sourceInformation)));
-                },
-                (Database srcDatabase, CompileContext context) ->
-                {
-                    org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(context.pureModel.buildPackageString(srcDatabase._package, srcDatabase.name), srcDatabase.sourceInformation, context);
-                    ListIterate.forEach(srcDatabase.schemas, _schema -> HelperRelationalBuilder.processDatabaseSchemaViewsSecondPass(_schema, context, database));
-                }
+                            database._classifierGenericType(new Root_meta_pure_metamodel_type_generics_GenericType_Impl("", null, context.pureModel.getClass("meta::pure::metamodel::type::generics::GenericType"))
+                                    ._rawType(context.pureModel.getType("meta::relational::metamodel::Database")));
+                            return database;
+                        },
+                        (Database srcDatabase, CompileContext context) ->
+                        {
+                            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(context.pureModel.buildPackageString(srcDatabase._package, srcDatabase.name), srcDatabase.sourceInformation, context);
+                            if (!srcDatabase.includedStores.isEmpty())
+                            {
+                                database._includes(ListIterate.collect(srcDatabase.includedStores, include -> HelperRelationalBuilder.resolveDatabase(context.pureModel.addPrefixToTypeReference(include), srcDatabase.sourceInformation, context)));
+                            }
+                            database._schemas(ListIterate.collect(srcDatabase.schemas, _schema -> HelperRelationalBuilder.processDatabaseSchema(_schema, context, database)));
+                        },
+                        (Database srcDatabase, CompileContext context) ->
+                        {
+                            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(context.pureModel.buildPackageString(srcDatabase._package, srcDatabase.name), srcDatabase.sourceInformation, context);
+                            ListIterate.forEach(srcDatabase.schemas, _schema -> HelperRelationalBuilder.processDatabaseSchemaViewsFirstPass(_schema, context, database));
+                        },
+                        (Database srcDatabase, CompileContext context) ->
+                        {
+                            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(context.pureModel.buildPackageString(srcDatabase._package, srcDatabase.name), srcDatabase.sourceInformation, context);
+                            // TODO checkForDuplicatesByName for filters/joins
+                            database._joins(srcDatabase.joins == null ? Lists.fixedSize.empty() : ListIterate.collect(srcDatabase.joins, join -> HelperRelationalBuilder.processDatabaseJoin(join, context, database)))
+                                    ._filters(srcDatabase.filters == null ? Lists.fixedSize.empty() : ListIterate.collect(srcDatabase.filters, filter -> HelperRelationalBuilder.processDatabaseFilter(filter, context, database)))
+                                    ._stereotypes(srcDatabase.stereotypes == null ? Lists.fixedSize.empty() : ListIterate.collect(srcDatabase.stereotypes, stereotypePointer -> context.resolveStereotype(stereotypePointer.profile, stereotypePointer.value, stereotypePointer.profileSourceInformation, stereotypePointer.sourceInformation)));
+                        },
+                        (Database srcDatabase, CompileContext context) ->
+                        {
+                            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(context.pureModel.buildPackageString(srcDatabase._package, srcDatabase.name), srcDatabase.sourceInformation, context);
+                            ListIterate.forEach(srcDatabase.schemas, _schema -> HelperRelationalBuilder.processDatabaseSchemaViewsSecondPass(_schema, context, database));
+                        }
                 ),
                 Processor.newProcessor(
                         RelationalMapper.class,
                         Lists.fixedSize.with(PackageableRuntime.class, org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.Mapping.class, org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.Store.class),
                         (relationalMapper, context) ->
                         {
-                            Root_meta_relational_metamodel_RelationalMapper metamodel =  new Root_meta_relational_metamodel_RelationalMapper_Impl(relationalMapper.name, null, context.pureModel.getClass("meta::relational::metamodel::RelationalMapper"))._name(relationalMapper.name);
+                            Root_meta_relational_metamodel_RelationalMapper metamodel = new Root_meta_relational_metamodel_RelationalMapper_Impl(relationalMapper.name, null, context.pureModel.getClass("meta::relational::metamodel::RelationalMapper"))._name(relationalMapper.name);
                             relationalMappersIndex.put(context.pureModel.buildPackageString(relationalMapper._package, relationalMapper.name), metamodel);
                             return metamodel;
                         },
@@ -226,20 +224,14 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
                         {
                             Root_meta_relational_metamodel_RelationalMapper metamodel = relationalMappersIndex.get(context.pureModel.buildPackageString(relationalMapper._package, relationalMapper.name));
                             metamodel._databaseMappers(ListIterate.collect(relationalMapper.databaseMappers, dbMap ->
-                            {
-                                return new Root_meta_relational_metamodel_DatabaseMapper_Impl("", null, context.pureModel.getClass("meta::relational::metamodel::DatabaseMapper"))
-                                        ._database(dbMap.databaseName);
-                            }));
+                                    new Root_meta_relational_metamodel_DatabaseMapper_Impl("", null, context.pureModel.getClass("meta::relational::metamodel::DatabaseMapper"))
+                                            ._database(dbMap.databaseName)));
                             metamodel._schemaMappers(ListIterate.collect(relationalMapper.schemaMappers, schMap ->
-                            {
-                                return new Root_meta_relational_metamodel_SchemaMapper_Impl("", null, context.pureModel.getClass("meta::relational::metamodel::SchemaMapper"))
-                                        ._to(schMap.to);
-                            }));
+                                    new Root_meta_relational_metamodel_SchemaMapper_Impl("", null, context.pureModel.getClass("meta::relational::metamodel::SchemaMapper"))
+                                            ._to(schMap.to)));
                             metamodel._tableMappers(ListIterate.collect(relationalMapper.tableMappers, tblMap ->
-                            {
-                                return new Root_meta_relational_metamodel_TableMapper_Impl("", null, context.pureModel.getClass("meta::relational::metamodel::TableMapper"))
-                                        ._to(tblMap.to);
-                            }));
+                                    new Root_meta_relational_metamodel_TableMapper_Impl("", null, context.pureModel.getClass("meta::relational::metamodel::TableMapper"))
+                                            ._to(tblMap.to)));
                         },
                         (relationalMapper, context) ->
                         {
@@ -263,7 +255,7 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
                     if (cm instanceof RootRelationalClassMapping)
                     {
                         RootRelationalClassMapping classMapping = (RootRelationalClassMapping) cm;
-                        String id = classMapping.id != null ? classMapping.id : getElementFullPath(context.resolveClass(classMapping._class, classMapping.classSourceInformation), context.pureModel.getExecutionSupport()).replaceAll("::", "_");
+                        String id = classMapping.id != null ? classMapping.id : HelperModelBuilder.getElementFullPath(context.resolveClass(classMapping._class, classMapping.classSourceInformation), context.pureModel.getExecutionSupport()).replaceAll("::", "_");
                         final RootRelationalInstanceSetImplementation res = new Root_meta_relational_mapping_RootRelationalInstanceSetImplementation_Impl(id, SourceInformationHelper.toM3SourceInformation(cm.sourceInformation), context.pureModel.getClass("meta::relational::mapping::RootRelationalInstanceSetImplementation"))._id(id);
                         MutableList<RelationalOperationElement> groupByColumns = ListIterate.collect(classMapping.groupBy, relationalOperationElement -> HelperRelationalBuilder.processRelationalOperationElement(relationalOperationElement, context, Maps.mutable.empty(), Lists.mutable.empty()));
                         org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.TableAlias mainTableAlias = null;
@@ -299,11 +291,11 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
                             MutableSet<org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database> databases = tableAliases.collect(TableAliasAccessor::_database);
 
                             // if classMapping is extending another class the main table can be resolved in ExtraClassMappingSecondPassProcessors
-                            if ((tables.size() == 0 && classMapping.extendsClassMappingId == null) || tables.size() > 1)
+                            if ((tables.isEmpty() && classMapping.extendsClassMappingId == null) || tables.size() > 1)
                             {
                                 throw new EngineException("Can't find the main table for class '" + classMapping.id + "'. Please specify a main table using the ~mainTable directive.");
                             }
-                            if ((databases.size() == 0 && classMapping.extendsClassMappingId == null) || databases.size() > 1)
+                            if ((databases.isEmpty() && classMapping.extendsClassMappingId == null) || databases.size() > 1)
                             {
                                 throw new EngineException("Can't find the main table for class '" + classMapping.id + "'. Inconsistent database definitions for the mapping");
                             }
@@ -427,7 +419,7 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
     @Override
     public List<Function2<Connection, CompileContext, Root_meta_core_runtime_Connection>> getExtraConnectionValueProcessors()
     {
-        return Lists.mutable.with(
+        return Collections.singletonList(
                 (connectionValue, context) ->
                 {
                     if (connectionValue instanceof RelationalDatabaseConnection)
@@ -518,12 +510,12 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
                     org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Schema schema = ((org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database) context.pureModel.getStore(fks.table.getDb()))
                             ._schemas().detect(s -> s._name().equals(fks.table.schema));
                     RichIterable<? extends NamedRelation> relations = fks.table._type.equals("Table")
-                            ? schema._tables()
-                            : fks.table._type.equals("View") ? schema._views() : null;
+                                                                      ? schema._tables()
+                                                                      : fks.table._type.equals("View") ? schema._views() : null;
                     Relation table = relations != null ? relations.detect(a -> a._name().equals(fks.table.table)) : null;
                     RichIterable<Column> columns = ListIterate.collect(fks.columns, col -> table != null
-                            ? table._columns().select(c -> c instanceof Column).collect(c -> (Column) c).detect(c -> c._name().equals(col))
-                            : null
+                                                                                           ? table._columns().select(c -> c instanceof Column).collect(c -> (Column) c).detect(c -> c._name().equals(col))
+                                                                                           : null
                     ).select(Objects::nonNull);
                     fksByTable.put(table, new Root_meta_pure_functions_collection_List_Impl("", null, context.pureModel.getClass("meta::pure::functions::collection::List"))._values(columns));
                 });
@@ -621,22 +613,6 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
     }
 
     @Override
-    public List<Procedure<Procedure2<String, List<String>>>> getExtraElementForPathToElementRegisters()
-    {
-        return Collections.singletonList(registerElementForPathToElement ->
-        {
-            registerElementForPathToElement.value("meta::relational::contract", Lists.mutable.with(
-                    "supports_FunctionExpression_1__Boolean_1_",
-                    "supportsStream_FunctionExpression_1__Boolean_1_",
-                    "planExecution_StoreQuery_1__RoutedValueSpecification_$0_1$__Mapping_$0_1$__Runtime_$0_1$__ExecutionContext_1__Extension_MANY__DebugContext_1__ExecutionNode_1_"
-            ));
-
-            ImmutableList<String> versions = PureClientVersions.versionsSince("v1_20_0");
-            versions.forEach(v -> registerElementForPathToElement.value("meta::protocols::pure::" + v + "::extension", Lists.mutable.with("getRelationalExtension_String_1__SerializerExtension_1_")));
-        });
-    }
-
-    @Override
     public List<Function4<org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification, CompileContext, List<String>, ProcessingContext, ValueSpecification>> getExtraValueSpecificationProcessors()
     {
         return Collections.singletonList((valueSpecification, context, openVariables, processingContext) ->
@@ -656,7 +632,7 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
     @Override
     public List<Function3<Connection, PostProcessor, CompileContext, Pair<Root_meta_pure_alloy_connections_PostProcessor, Root_meta_relational_runtime_PostProcessorWithParameter>>> getExtraConnectionPostProcessor()
     {
-        return Lists.mutable.with((connection, processor, context) ->
+        return Collections.singletonList((connection, processor, context) ->
         {
             if (processor instanceof MapperPostProcessor)
             {
@@ -691,7 +667,7 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
     @Override
     public List<Function2<DatasourceSpecification, CompileContext, Root_meta_pure_alloy_connections_alloy_specification_DatasourceSpecification>> getExtraDataSourceSpecificationProcessors()
     {
-        return Lists.mutable.with((spec, context) ->
+        return Collections.singletonList((spec, context) ->
         {
             DatasourceSpecificationBuilder datasourceSpecificationVisitor = new DatasourceSpecificationBuilder(context);
             return spec.accept(datasourceSpecificationVisitor);
@@ -701,7 +677,7 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
     @Override
     public List<Function2<AuthenticationStrategy, CompileContext, Root_meta_pure_alloy_connections_alloy_authentication_AuthenticationStrategy>> getExtraAuthenticationStrategyProcessors()
     {
-        return Lists.mutable.with((strategy, context) ->
+        return Collections.singletonList((strategy, context) ->
         {
             AuthenticationStrategyBuilder authenticationStrategyBuilder = new AuthenticationStrategyBuilder(context);
             return strategy.accept(authenticationStrategyBuilder);
@@ -711,7 +687,7 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
     @Override
     public List<Function3<org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.milestoning.Milestoning, CompileContext, Multimap<String, Column>, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.relation.Milestoning>> getExtraMilestoningProcessors()
     {
-        return Lists.mutable.with((spec, context, columnMap) -> HelperRelationalBuilder.visitMilestoning(spec, context, columnMap));
+        return Collections.singletonList(HelperRelationalBuilder::visitMilestoning);
     }
 
     @Override
@@ -755,7 +731,7 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
     @Override
     public List<Function4<RelationStoreAccessor, Store, CompileContext, ProcessingContext, ValueSpecification>> getExtraRelationStoreAccessorProcessors()
     {
-        return Lists.mutable.with((accessor, store, context, processingContext) ->
+        return Collections.singletonList((accessor, store, context, processingContext) ->
         {
             if (store instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database)
             {
@@ -771,7 +747,7 @@ public class RelationalCompilerExtension implements IRelationalCompilerExtension
                 org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Schema schema = schemaName == null ? ds._schemas().getFirst() : ds._schemas().select(c -> c.getName().equals(schemaName)).getFirst();
                 if (schema == null)
                 {
-                    throw new EngineException(schemaName == null ?  "The database " + store._name() + " has no schemas" : "The schema " + schemaName + " can't be found in the store " + store._name(), accessor.sourceInformation, EngineErrorType.COMPILATION);
+                    throw new EngineException(schemaName == null ? "The database " + store._name() + " has no schemas" : "The schema " + schemaName + " can't be found in the store " + store._name(), accessor.sourceInformation, EngineErrorType.COMPILATION);
                 }
                 Table table = schema._tables().select(c -> c.getName().equals(tableName)).getFirst();
                 if (table == null)
