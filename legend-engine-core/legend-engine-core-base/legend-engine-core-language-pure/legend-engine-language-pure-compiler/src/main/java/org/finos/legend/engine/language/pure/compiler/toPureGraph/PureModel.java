@@ -17,12 +17,6 @@ package org.finos.legend.engine.language.pure.compiler.toPureGraph;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.util.GlobalTracer;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 import org.eclipse.collections.api.RichIterable;
 import org.eclipse.collections.api.block.predicate.Predicate;
 import org.eclipse.collections.api.factory.Lists;
@@ -115,6 +109,8 @@ import org.finos.legend.pure.runtime.java.compiled.metadata.MetadataLazy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.List;
@@ -123,9 +119,13 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class PureModel implements IPureModel
@@ -234,7 +234,6 @@ public class PureModel implements IPureModel
             this.immutables.add("Package");
             modifyRootClassifier();
 
-            registerElementsForPathToElement();
             long preInitEnd = System.nanoTime();
 
             LOGGER.info("{}", new LogInfo(user, "GRAPH_START", (pureModelContextData.origin == null || pureModelContextData.origin.sdlcInfo == null) ? "" : pureModelContextData.origin.sdlcInfo.packageableElementPointers, nanosDurationToMillis(start, preInitEnd)));
@@ -439,51 +438,6 @@ public class PureModel implements IPureModel
     }
 
     // ------------------------------------------ INITIALIZATION -----------------------------------------
-
-    /**
-     * This method add elements from packages that belong to METADATA LAZY root to the packages that belong to this graph (PureModel) root
-     * as this is needed for `pathToElement` to work on older graph
-     */
-    private void registerElementsForPathToElement()
-    {
-        registerElementForPathToElement("meta::pure::mapping::modelToModel::contract", Lists.mutable.with(
-                "supports_FunctionExpression_1__Boolean_1_",
-                "planExecution_StoreQuery_1__RoutedValueSpecification_$0_1$__Mapping_$0_1$__Runtime_$0_1$__ExecutionContext_1__Extension_MANY__DebugContext_1__ExecutionNode_1_",
-                "execution_StoreQuery_1__RoutedValueSpecification_$0_1$__Mapping_1__Runtime_1__ExecutionContext_1__Extension_MANY__DebugContext_1__Result_1_",
-                "getterOverrideMapped_Any_1__PropertyMapping_1__Any_MANY_",
-                "getterOverrideNonMapped_Any_1__Property_1__Any_MANY_"
-        ));
-        registerElementForPathToElement("meta::pure::mapping::aggregationAware::contract", Lists.mutable.with(
-                "supports_FunctionExpression_1__Boolean_1_",
-                "planExecution_StoreQuery_1__RoutedValueSpecification_$0_1$__Mapping_$0_1$__Runtime_$0_1$__ExecutionContext_1__Extension_MANY__DebugContext_1__ExecutionNode_1_",
-                "execution_StoreQuery_1__RoutedValueSpecification_$0_1$__Mapping_1__Runtime_1__ExecutionContext_1__Extension_MANY__DebugContext_1__Result_1_"
-        ));
-        registerElementForPathToElement("meta::protocols::pure::vX_X_X::invocation::execution::execute", Lists.mutable.with(
-                "alloyExecute_FunctionDefinition_1__Mapping_1__Runtime_1__ExecutionContext_$0_1$__String_1__Integer_1__String_1__String_1__Extension_MANY__Result_1_",
-                "executePlan_ExecutionPlan_1__String_1__Integer_1__Extension_MANY__String_1_"
-        ));
-        registerElementForPathToElement("meta::pure::tds", Lists.mutable.with(
-                "TDSRow"
-        ));
-        this.extensions.getExtraElementForPathToElementRegisters().forEach(register -> register.value(this::registerElementForPathToElement));
-    }
-
-    private void registerElementForPathToElement(String pack, List<String> children)
-    {
-        try (AutoCloseableLock ignored = this.pureModelProcessParameter.writeLock())
-        {
-            org.finos.legend.pure.m3.coreinstance.Package newPkg = getOrCreatePackage(root, pack);
-            org.finos.legend.pure.m3.coreinstance.Package oldPkg = getPackage((org.finos.legend.pure.m3.coreinstance.Package) METADATA_LAZY.getMetadata(M3Paths.Package, M3Paths.Root), pack);
-            for (String child : children)
-            {
-                // allow duplicated registration, but only the first one will actually get registered
-                if (newPkg._children().detect(c -> child.equals(c._name())) == null)
-                {
-                    newPkg._childrenAdd(Objects.requireNonNull(oldPkg._children().detect(c -> child.equals(c._name())), "Can't find child element '" + child + "' in package '" + pack + "' for path registration"));
-                }
-            }
-        }
-    }
 
     private void initializeMultiplicities()
     {
