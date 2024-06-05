@@ -197,6 +197,7 @@ public interface CompilerExtension extends LegendLanguageExtension
     /**
      * Needed to register paths for `pathToElement` to work on old graph
      */
+    @Deprecated
     default List<Procedure<Procedure2<String, List<String>>>> getExtraElementForPathToElementRegisters()
     {
         return Collections.emptyList();

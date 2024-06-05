@@ -75,6 +75,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +119,6 @@ public class CompilerExtensions
     private final ImmutableList<Function3<LambdaFunction, CompileContext, ProcessingContext, LambdaFunction>> extraLambdaPostProcessors;
     private final ImmutableList<Procedure2<PackageableElement, MutableMap<String, String>>> extraStoreStatBuilders;
     private final ImmutableList<Function2<ExecutionContext, CompileContext, Root_meta_pure_runtime_ExecutionContext>> extraExecutionContextProcessors;
-    private final ImmutableList<Procedure<Procedure2<String, List<String>>>> extraElementForPathToElementRegisters;
     private final ImmutableList<Procedure3<SetImplementation, Set<String>, CompileContext>> extraSetImplementationSourceScanners;
     private final ImmutableList<Procedure2<PureModel, PureModelContextData>> extraPostValidators;
     private final ImmutableList<Function2<ExecutionOption, CompileContext, Root_meta_pure_executionPlan_ExecutionOption>> extraExecutionOptionProcessors;
@@ -151,7 +151,6 @@ public class CompilerExtensions
         this.extraLambdaPostProcessors = this.extensions.flatCollect(CompilerExtension::getExtraLambdaPostProcessor);
         this.extraStoreStatBuilders = this.extensions.flatCollect(CompilerExtension::getExtraStoreStatBuilders);
         this.extraExecutionContextProcessors = this.extensions.flatCollect(CompilerExtension::getExtraExecutionContextProcessors);
-        this.extraElementForPathToElementRegisters = this.extensions.flatCollect(CompilerExtension::getExtraElementForPathToElementRegisters);
         this.extraSetImplementationSourceScanners = this.extensions.flatCollect(CompilerExtension::getExtraSetImplementationSourceScanners);
         this.extraPostValidators = this.extensions.flatCollect(CompilerExtension::getExtraPostValidators);
         this.extraExecutionOptionProcessors = this.extensions.flatCollect(CompilerExtension::getExtraExecutionOptionProcessors);
@@ -319,9 +318,10 @@ public class CompilerExtensions
         return this.extraTestAssertionProcessors.castToList();
     }
 
+    @Deprecated
     public List<Procedure<Procedure2<String, List<String>>>> getExtraElementForPathToElementRegisters()
     {
-        return this.extraElementForPathToElementRegisters.castToList();
+        return Collections.emptyList();
     }
 
     public List<Procedure3<SetImplementation, Set<String>, CompileContext>> getExtraSetImplementationSourceScanners()
