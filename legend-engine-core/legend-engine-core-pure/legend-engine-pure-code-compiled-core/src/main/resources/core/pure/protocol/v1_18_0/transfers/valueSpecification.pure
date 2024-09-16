@@ -344,7 +344,7 @@ function <<access.private>> meta::protocols::pure::v1_18_0::transformation::from
                         _type = 'enum',
                         fullPath = $e->elementToPath()
                      ),
-                  u:Unit[1]|
+                  u:Unit<Any>[1]|
                      ^meta::protocols::pure::v1_18_0::metamodel::valueSpecification::UnitType
                      (
                         _type='unitType',

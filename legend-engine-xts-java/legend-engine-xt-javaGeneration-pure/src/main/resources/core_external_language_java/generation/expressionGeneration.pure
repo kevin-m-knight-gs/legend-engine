@@ -197,7 +197,7 @@ function <<access.private>> meta::external::language::java::transform::processIn
 
    let converted = if($i.genericType.rawType->toOne()->instanceOf(Unit),
                       {|
-                         let unitImpl = $conventions->implClassName($i.genericType.rawType->toOne()->cast(@Unit));
+                         let unitImpl = $conventions->implClassName($i.genericType.rawType->toOne()->cast(@Unit<Any>));
                          $values->map(v| $unitImpl->j_new($v));
                       },
                       | $values

@@ -59,10 +59,10 @@ Class meta::pure::executionPlan::platformBinding::typeInfo::ClassTypeInfo extend
 
 Class meta::pure::executionPlan::platformBinding::typeInfo::UnitTypeInfo extends TypeInfo
 {
-   measure: Measure[1];
+   measure: Measure<Any>[1];
    conversionFunction: FunctionDefinition<Any>[1];
 
-   unit() { $this.type->cast(@Unit) }: Unit[1];
+   unit() { $this.type->cast(@Unit<Any>) }: Unit<Any>[1];
 }
 
 function meta::pure::executionPlan::platformBinding::typeInfo::newTypeInfoSet(): TypeInfoSet[1]
@@ -189,7 +189,7 @@ function meta::pure::executionPlan::platformBinding::typeInfo::forEnumeration(in
    $info->forType($enumeration)->cast(@EnumerationTypeInfo);
 }
 
-function meta::pure::executionPlan::platformBinding::typeInfo::forUnit(info:TypeInfoSet[1], unit:Unit[1]): UnitTypeInfo[1]
+function meta::pure::executionPlan::platformBinding::typeInfo::forUnit(info:TypeInfoSet[1], unit:Unit<Any>[1]): UnitTypeInfo[1]
 {
    $info->forType($unit)->cast(@UnitTypeInfo);
 }
@@ -601,7 +601,7 @@ function <<access.private>> meta::pure::executionPlan::platformBinding::typeInfo
          $type->match([
             e : Enumeration<Any>[1] | $info->addEnumerationTypeInfo($e),
             c : Class<Any>[1]       | $info->addBasicClassTypeInfo($c, $seenClasses, $isNewInstanceAllowed),
-            u : Unit[1]             | $info->addUnitTypeInfo($u),
+            u : Unit<Any>[1]        | $info->addUnitTypeInfo($u),
             a : Any[1]              | $info
          ])
       }
@@ -645,7 +645,7 @@ function <<access.private>> meta::pure::executionPlan::platformBinding::typeInfo
   )
 }
 
-function <<access.private>> meta::pure::executionPlan::platformBinding::typeInfo::addUnitTypeInfo(info:TypeInfoSet[1], unit:Unit[1]): TypeInfoSet[1]
+function <<access.private>> meta::pure::executionPlan::platformBinding::typeInfo::addUnitTypeInfo(info:TypeInfoSet[1], unit:Unit<Any>[1]): TypeInfoSet[1]
 {
    let measure = $unit.measure->toOne();
    let conversionFunction = $unit.conversionFunction->toOne();

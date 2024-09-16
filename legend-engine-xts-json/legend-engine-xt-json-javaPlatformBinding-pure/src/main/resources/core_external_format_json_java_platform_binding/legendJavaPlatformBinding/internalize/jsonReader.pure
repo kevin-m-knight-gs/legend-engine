@@ -232,7 +232,7 @@ function <<access.private>> meta::external::format::json::executionPlan::platfor
                         {e: meta::pure::metamodel::type::Enumeration<Any>[1] |
                           $variable->j_assign($jThis->j_invoke('acceptMany', [$nodeParam->j_invoke('path', j_string($fieldName), jsonNode()), j_methodReference($jThis, $e->readMethodName($conventions), javaFunctionType(jsonNode(), $elementType)), $defectRecorder], $listType));
                         },
-                        {u: Unit[1] |
+                        {u: Unit<Any>[1] |
                           $variable->j_assign($jThis->j_invoke('acceptMany', [$nodeParam->j_invoke('path', j_string($fieldName), jsonNode()), j_methodReference($jThis, 'accept' + $conventions->identifier($propertyType.name->toOne()), javaFunctionType(jsonNode(), $elementType)), $defectRecorder], $listType));
                         },
                         {a: Any[1] |

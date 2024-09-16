@@ -24,7 +24,7 @@ Class <<access.private>> meta::protocols::pure::v1_29_0::transformation::fromPur
 {
    classes : Class<Any>[*];
    enumerations : Enumeration<Any>[*];
-   measures : Measure[*];
+   measures : Measure<Any>[*];
 }
 
 function meta::protocols::pure::v1_29_0::transformation::fromPureGraph::buildPureModelContextPointer(pointers:meta::protocols::pure::v1_29_0::metamodel::PackageableElementPointer[*], baseVersion:String[1], protocol:Protocol[1]):meta::protocols::pure::v1_29_0::metamodel::PureModelContextPointer[1]
@@ -147,7 +147,7 @@ function <<access.private>> meta::protocols::pure::v1_29_0::transformation::from
    let allTypes       = $directTypes->concatenate($inheritedTypes)->removeDuplicates()->remove(Any)->filter(t|!$t->isWithinPackage(meta::pure::metamodel));
    ^AllTypes(classes = $allTypes->filter(t|$t->instanceOf(Class))->cast(@Class<Any>),
              enumerations = $allTypes->filter(t|$t->instanceOf(Enumeration))->cast(@Enumeration<Any>),
-             measures = $allTypes->filter(t|$t->instanceOf(Measure))->cast(@Measure));
+             measures = $allTypes->filter(t|$t->instanceOf(Measure))->cast(@Measure<Any>));
 }
 
 function meta::protocols::pure::v1_29_0::transformation::fromPureGraph::findAllAssociations(classes:meta::pure::metamodel::type::Class<Any>[*]):Association[*]

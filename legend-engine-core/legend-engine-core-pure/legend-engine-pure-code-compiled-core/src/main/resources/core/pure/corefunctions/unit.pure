@@ -17,33 +17,33 @@ import meta::pure::unit::*;
 
 function meta::pure::functions::math::plus(masses: Mass[*]):Mass~Gram[1]
 {
-   let cv = $masses->map(m|let cv = $m->type()->cast(@Unit).conversionFunction->cast(@Function<{Number[1]->Number[1]}>)->toOne()->eval(getUnitValue($m)););
+   let cv = $masses->map(m|let cv = $m->type()->cast(@Unit<Any>).conversionFunction->cast(@Function<{Number[1]->Number[1]}>)->toOne()->eval(getUnitValue($m)););
    let resultNumeric = $cv->sum();
-   newUnit(Mass~Gram, $resultNumeric)->cast(@Mass~Gram);
+   newUnit(Mass~Gram, $resultNumeric);
 }
 
 function meta::pure::functions::math::minus(masses: Mass[*]):Mass~Gram[1]
 {
-   let cv = $masses->map(m|let cv = $m->type()->cast(@Unit).conversionFunction->cast(@Function<{Number[1]->Number[1]}>)->toOne()->eval(getUnitValue($m)););
+   let cv = $masses->map(m|let cv = $m->type()->cast(@Unit<Any>).conversionFunction->cast(@Function<{Number[1]->Number[1]}>)->toOne()->eval(getUnitValue($m)););
    let resultNumeric = $cv->minus();
-   newUnit(Mass~Gram, $resultNumeric)->cast(@Mass~Gram);
+   newUnit(Mass~Gram, $resultNumeric);
 }
 
 function meta::pure::unit::massScalarTimes(mass: Mass[1], nums: Number[*]):Mass~Gram[1]
 {
-   let convertedValue = $mass->type()->cast(@Unit).conversionFunction->cast(@Function<{Number[1]->Number[1]}>)->toOne()->eval(getUnitValue($mass));
+   let convertedValue = $mass->type()->cast(@Unit<Any>).conversionFunction->cast(@Function<{Number[1]->Number[1]}>)->toOne()->eval(getUnitValue($mass));
    let numsMultResult = $nums->times();
    let myValue = [$convertedValue, $numsMultResult]->times();
-   newUnit(Mass~Gram, $myValue)->cast(@Mass~Gram);
+   newUnit(Mass~Gram, $myValue);
 }
 
 function meta::pure::unit::massScalarDivision(mass: Mass[1], nums: Number[*]):Mass~Gram[1]
 {
-   let convertedValue = $mass->type()->cast(@Unit).conversionFunction->cast(@Function<{Number[1]->Number[1]}>)->toOne()->eval(getUnitValue($mass));
+   let convertedValue = $mass->type()->cast(@Unit<Any>).conversionFunction->cast(@Function<{Number[1]->Number[1]}>)->toOne()->eval(getUnitValue($mass));
    let numsMultResult = $nums->times();
    assert($numsMultResult != 0, 'Cannot divide by zero.');
    let myValue = $convertedValue->divide($numsMultResult);
-   newUnit(Mass~Gram, $myValue)->cast(@Mass~Gram);
+   newUnit(Mass~Gram, $myValue);
 }
 
 Measure meta::pure::unit::Mass  // Mass instance of Measure
@@ -66,8 +66,8 @@ function meta::pure::executionPlan::engine::java::unitValue(unit:Any[1]):Number[
    0;
 }
 
-function meta::pure::executionPlan::engine::java::convert(unit:Any[1], targetUnit:Unit[1]):Any[1]
+function meta::pure::executionPlan::engine::java::convert<U>(unit:Any[1], targetUnit:Unit<U>[1]):U[1]
 {
    fail('Not implemented yet');
-   '';
+   newUnit($targetUnit, getUnitValue($unit));
 }

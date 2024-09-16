@@ -248,7 +248,7 @@ function meta::external::format::shared::executionPlan::extractPackageableElemen
                                   p:PropertyGraphFetchTree[1]  | if($p.property.genericType.rawType->isEmpty() || $p.isPrimitive(),
                                                                     | [],
                                                                     | let rawType = $p.property.genericType.rawType->toOne();
-                                                                      if($rawType->instanceOf(Class), | $rawType->cast(@Class<Any>), | $rawType->cast(@Unit).measure)->concatenate($p.property.owner);
+                                                                      if($rawType->instanceOf(Class), | $rawType->cast(@Class<Any>), | $rawType->cast(@Unit<Any>).measure)->concatenate($p.property.owner);
                                                                  )->concatenate($p.subType),
                                   s:SubTypeGraphFetchTree[1]   | $s.subTypeClass
                                 ])->cast(@PackageableElement);
@@ -312,4 +312,3 @@ function <<access.private>> meta::external::format::shared::executionPlan::getFu
             ^PureFunctionToProcessFunctionPair(first = meta::external::format::shared::functions::externalize_TabularDataSet_1__String_1__String_1_, second = externalizeTDSFunctionProcessor_FunctionExpression_1__ExternalFormatPlanGenerationState_1__Extension_MANY__DebugContext_1__ExecutionNode_1_)
       ];
 }
-

@@ -217,8 +217,8 @@ meta::pure::functions::meta::isPrimitiveValueProperty(property : AbstractPropert
       pt:PrimitiveType[1]    | true,
       et:Enumeration<Any>[1] | true,
       a:Class<Any>[1]        | false,
-      u: Unit[1]             | true,
-      m: Measure[1]          | true
+      u:Unit<Any>[1]         | true,
+      m:Measure<Any>[1]      | true
    ]);
 }
 

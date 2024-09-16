@@ -337,7 +337,7 @@ function <<access.private>> meta::pure::mapping::modelToModel::executionPlan::pl
          {e: meta::pure::metamodel::type::Enumeration<Any>[1] |
             $variable+' = acceptMany(node.path('+escapedString($p.name->toOne())+'), this::'+$e->readMethodName($conventions)+','+$defectRecorder+');\n';
          },
-         {u: Unit[1] |
+         {u: Unit<Any>[1] |
             $variable+' = acceptMany(node.path('+escapedString($p.name->toOne())+'), this::accept'+$conventions->identifier($propertyType.name->toOne())+','+$defectRecorder+');\n';
          },
          {a: Any[1] |

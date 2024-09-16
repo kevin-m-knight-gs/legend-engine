@@ -30,7 +30,7 @@ function meta::protocols::pure::v1_32_0::transformation::fromPureGraph::domain::
      class:Class<Any>[1]             | transformClass($class, $extensions),
      assoc:Association[1]            | transformAssociation($assoc, $extensions),
      enum:Enumeration<Any>[1]        | transformEnum($enum),
-     meas:Measure[1]                 | transformMeasure($meas, $extensions),
+     meas:Measure<Any>[1]            | transformMeasure($meas, $extensions),
      func:ConcreteFunctionDefinition<Any>[1] | transformFunction($func, $extensions),
      prof:Profile[1]                 | transformProfile($prof, $extensions)
    ])
@@ -110,7 +110,7 @@ function meta::protocols::pure::v1_32_0::transformation::fromPureGraph::domain::
    );
 }
 
-function meta::protocols::pure::v1_32_0::transformation::fromPureGraph::domain::transformMeasure(measure:Measure[1], extensions:meta::pure::extension::Extension[*]):meta::protocols::pure::v1_32_0::metamodel::domain::Measure[1]
+function meta::protocols::pure::v1_32_0::transformation::fromPureGraph::domain::transformMeasure(measure:Measure<Any>[1], extensions:meta::pure::extension::Extension[*]):meta::protocols::pure::v1_32_0::metamodel::domain::Measure[1]
 {
    let canonicalUnit = $measure.canonicalUnit;
    let nonCanonicalUnits = $measure.nonCanonicalUnits;
@@ -125,7 +125,7 @@ function meta::protocols::pure::v1_32_0::transformation::fromPureGraph::domain::
    );
 }
 
-function meta::protocols::pure::v1_32_0::transformation::fromPureGraph::domain::transformUnit(unit:Unit[1], extensions:meta::pure::extension::Extension[*]):meta::protocols::pure::v1_32_0::metamodel::domain::Unit[1]
+function meta::protocols::pure::v1_32_0::transformation::fromPureGraph::domain::transformUnit(unit:Unit<Any>[1], extensions:meta::pure::extension::Extension[*]):meta::protocols::pure::v1_32_0::metamodel::domain::Unit[1]
 {
    let measure = $unit.measure;
    let conversionFunction = $unit.conversionFunction;

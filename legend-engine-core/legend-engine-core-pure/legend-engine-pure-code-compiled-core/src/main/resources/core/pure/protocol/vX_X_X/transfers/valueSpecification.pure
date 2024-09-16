@@ -355,7 +355,7 @@ function <<access.private>> meta::protocols::pure::vX_X_X::transformation::fromP
                         _type = 'packageableElementPtr',
                         fullPath = $e->elementToPath()
                      ),
-                  u:Unit[1]|
+                  u:Unit<Any>[1]|
                     ^meta::protocols::pure::vX_X_X::metamodel::valueSpecification::raw::UnitType
                     (
                        _type = 'unitType',

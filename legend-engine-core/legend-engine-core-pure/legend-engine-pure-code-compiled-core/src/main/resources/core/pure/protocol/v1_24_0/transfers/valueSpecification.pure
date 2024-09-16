@@ -346,7 +346,7 @@ function <<access.private>> meta::protocols::pure::v1_24_0::transformation::from
                         _type = 'packageableElementPtr',
                         fullPath = $e->elementToPath()
                      ),
-                  u:Unit[1]|
+                  u:Unit<Any>[1]|
                      ^meta::protocols::pure::v1_24_0::metamodel::valueSpecification::UnitType
                      (
                         _type='unitType',

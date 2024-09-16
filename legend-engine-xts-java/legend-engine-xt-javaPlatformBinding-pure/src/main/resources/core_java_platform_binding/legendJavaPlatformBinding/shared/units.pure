@@ -62,7 +62,7 @@ function meta::pure::executionPlan::platformBinding::legendJava::shared::units::
 {
     let conventions = $context.conventions;
     let unitTypesInMapping = $context.typeInfos->allUnitInfos()->map(uti | $uti.unit());
-    let unitClassesUsed = $unitTypesInMapping->map(u| let conversionFunction = $u->cast(@Unit).conversionFunction->evaluateAndDeactivate()->toOne();
+    let unitClassesUsed = $unitTypesInMapping->map(u| let conversionFunction = $u->cast(@Unit<Any>).conversionFunction->evaluateAndDeactivate()->toOne();
                                                       let inverseFunction = meta::pure::functions::math::calculateInverseFunction($conversionFunction)->evaluateAndDeactivate()->toOne();
                                                       let generatedConversionFunction = $conversionFunction.expressionSequence->toOne()->cast(@ValueSpecification)->generateJava($conventions, $debug);
                                                       let generatedInverseFunction = $inverseFunction.expressionSequence->toOne()->cast(@ValueSpecification)->generateJava($conventions, $debug);
@@ -131,7 +131,7 @@ function <<access.private>> meta::pure::executionPlan::platformBinding::legendJa
    let unitTypesInMapping = $context.typeInfos->allUnitInfos()->map(uti | $uti.unit());
    if ($unitTypesInMapping->size() > 0,
        | let u = $unitTypesInMapping->first();
-         let conversionFunction = $u->cast(@Unit).conversionFunction->evaluateAndDeactivate()->toOne();
+         let conversionFunction = $u->cast(@Unit<Any>).conversionFunction->evaluateAndDeactivate()->toOne();
          let generatedConversionFunctionCode = $conversionFunction.expressionSequence->toOne()->cast(@ValueSpecification)->generateJava($conventions, $debug);
          let conversionFunctionCodeWithDependency = $generatedConversionFunctionCode;,
        | ^Code(type=^meta::external::language::java::metamodel::Type()));

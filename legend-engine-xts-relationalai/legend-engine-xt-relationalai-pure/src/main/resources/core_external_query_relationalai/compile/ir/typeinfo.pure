@@ -105,7 +105,7 @@ function meta::external::store::rel::compile::ir::typeinfo::exprType(
     t: PrimitiveType[1]    | exprTypePrimitive($t),
     c: Class<Any>[1]       | $typeInfo->setForClass($c)->map(set: RelSetImplementation[1] | $set->exprTypeClass()),
     e: Enumeration<Any>[1] | [],
-    u: Unit[1]             | [],
-    m: Measure[1]          | []
+    u: Unit<Any>[1]        | [],
+    m: Measure<Any>[1]     | []
   ]);
 }
