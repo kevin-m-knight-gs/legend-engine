@@ -395,13 +395,13 @@ function <<access.private>> meta::external::language::java::transform::generateC
    let packageAndName = if($conventions.typeAndPackageNameStrategy->isEmpty(),
     |let zoneRoot    = $conventions.basePackageName + '.' + $zone + '.';
      let package     = $type->match([
-                           u:Unit[1]                                    | $u.measure.package,
+                           u:Unit<Any>[1]                               | $u.measure.package,
                            mc:meta::pure::mapping::MappingClass<Any>[1] | $mc.generalizations.general->cast(@GenericType).rawType->cast(@meta::pure::metamodel::type::Class<Any>).package,
                            pe:PackageableElement[1]                     | $pe.package
                        ])->toOne();
      let javaPkgName = $zoneRoot + $conventions->identifier($package->elementToPath('.'));
      let typeName = $type->match([
-                        u:Unit[1]                | $u.name,
+                        u:Unit<Any>[1]           | $u.name,
                         pe:PackageableElement[1] | $pe.name
                     ])->toOne();
      let name = $conventions->identifier($typeName)->toUpperFirstCharacter()->toOne() + $suffix;
