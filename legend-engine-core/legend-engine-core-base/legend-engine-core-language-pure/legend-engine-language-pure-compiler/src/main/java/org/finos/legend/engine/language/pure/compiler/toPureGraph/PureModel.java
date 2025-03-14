@@ -45,11 +45,11 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.validator.Enum
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.validator.FunctionValidator;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.validator.ProfileValidator;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.validator.PureModelContextDataValidator;
+import org.finos.legend.engine.protocol.pure.m3.extension.Profile;
+import org.finos.legend.engine.protocol.pure.m3.function.Function;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
-import org.finos.legend.engine.protocol.pure.m3.function.Function;
-import org.finos.legend.engine.protocol.pure.m3.extension.Profile;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.section.Section;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.section.SectionIndex;
 import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
@@ -85,6 +85,7 @@ import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.generics.G
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.valuespecification.VariableExpression;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.store.Store;
 import org.finos.legend.pure.m3.navigation.M3Paths;
+import org.finos.legend.pure.m3.navigation.M3Properties;
 import org.finos.legend.pure.m3.navigation.PackageableElement.PackageableElement;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
 import org.finos.legend.pure.m3.serialization.filesystem.repository.CodeRepository;
@@ -814,14 +815,7 @@ public class PureModel implements IPureModel
             }
             if (type == null)
             {
-                try
-                {
-                    type = metadataAccessor.getUnit(fullPath);
-                }
-                catch (Exception ignore)
-                {
-                    // metadata may throw if the instance is not found
-                }
+                type = getUnit_safe(fullPath);
             }
             if (type == null)
             {
@@ -852,6 +846,59 @@ public class PureModel implements IPureModel
             this.typesIndex.put(fullPathWithPrefix, type);
         }
         return type;
+    }
+
+    private Unit getUnit_safe(String fullPath)
+    {
+        MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
+        try
+        {
+            Unit unit = metadataAccessor.getUnit(fullPath);
+            if (unit != null)
+            {
+                return unit;
+            }
+        }
+        catch (Exception ignore)
+        {
+            // metadata may throw if the instance is not found
+        }
+
+        // handle backward compatibility for unit paths
+        int unitDelimiterIndex;
+        if ((unitDelimiterIndex = fullPath.indexOf('~')) == -1)
+        {
+            return null;
+        }
+
+        String measurePath = fullPath.substring(0, unitDelimiterIndex);
+        String unitName = fullPath.substring(unitDelimiterIndex + 1);
+        try
+        {
+            Unit unit = metadataAccessor.getUnit(measurePath + "." + M3Properties.nonCanonicalUnits + "['" + unitName + "']");
+            if (unit != null)
+            {
+                return unit;
+            }
+        }
+        catch (Exception ignore)
+        {
+            // metadata may throw if the instance is not found
+        }
+
+        try
+        {
+            Unit unit = metadataAccessor.getUnit(measurePath + "." + M3Properties.canonicalUnit);
+            if ((unit != null) && unitName.equals(unit.getName()))
+            {
+                return unit;
+            }
+        }
+        catch (Exception ignore)
+        {
+            // metadata may throw if the instance is not found
+        }
+        return null;
     }
 
     public org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.Class<?> getClass(String fullPath)
