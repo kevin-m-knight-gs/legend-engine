@@ -30,6 +30,25 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>dependency-analyze</id>
+                        <configuration>
+                            <!-- The dependency plugin analyzer raises these as false positives -->
+                            <ignoredUnusedDeclaredDependencies>
+                                <dependency>org.finos.legend.engine:legend-engine-pure-functions-json-pure</dependency>
+                            </ignoredUnusedDeclaredDependencies>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-maven-compiler</artifactId>
+            </plugin>
+            <plugin>
                 <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-maven-generation-par</artifactId>
                 <configuration>
@@ -183,6 +202,10 @@
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-functions-json-pure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-pure-platform-java</artifactId>
         </dependency>
         <dependency>
@@ -208,11 +231,6 @@
             <groupId>org.finos.legend.pure</groupId>
             <artifactId>legend-pure-m3-core</artifactId>
             <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-pure-functions-json-pure</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

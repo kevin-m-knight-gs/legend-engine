@@ -30,6 +30,22 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>dependency-analyze</id>
+                        <configuration>
+                            <!-- The dependency plugin analyzer raises these as false positives -->
+                            <ignoredUnusedDeclaredDependencies>
+                                <dependency>org.finos.legend.engine:legend-engine-pure-functions-legendCompiler-pure</dependency>
+                                <dependency>org.finos.legend.engine:legend-engine-pure-functions-relationalStore-PCT-pure</dependency>
+                            </ignoredUnusedDeclaredDependencies>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-maven-generation-par</artifactId>
                 <configuration>
@@ -82,6 +98,10 @@
                         <version>${project.version}</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-maven-compiler</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.finos.legend.pure</groupId>
@@ -254,6 +274,11 @@
         </dependency>
 
         <dependency>
+            <groupId>org.finos.legend.pure</groupId>
+            <artifactId>legend-pure-m4</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-shared-vault-core</artifactId>
         </dependency>
@@ -274,6 +299,11 @@
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-xt-relationalStore-executionPlan-connection</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-relationalStore-core-pure</artifactId>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
@@ -296,6 +326,10 @@
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-pure-functions-unclassified-pure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-functions-legendCompiler-pure</artifactId>
         </dependency>
 
         <dependency>
@@ -325,7 +359,6 @@
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-pure-functions-relationalStore-PCT-pure</artifactId>
-            <scope>runtime</scope>
         </dependency>
 
         <dependency>
@@ -349,10 +382,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.pure</groupId>
-            <artifactId>legend-pure-m4</artifactId>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
@@ -388,10 +417,6 @@
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-pureExtensions</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-xt-relationalStore-core-pure</artifactId>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
