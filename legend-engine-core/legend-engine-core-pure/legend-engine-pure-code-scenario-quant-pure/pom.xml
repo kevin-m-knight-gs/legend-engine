@@ -35,10 +35,16 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <configuration>
+                    <!-- The dependency plugin analyzer raises these as false positives -->
                     <ignoredUnusedDeclaredDependencies>
                         <ignoredUnusedDeclaredDependency>org.finos.legend.pure:legend-pure-m3-precisePrimitives</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>org.finos.legend.engine:legend-engine-pure-functions-relation-pure</ignoredUnusedDeclaredDependency>
                     </ignoredUnusedDeclaredDependencies>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-maven-compiler</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.finos.legend.pure</groupId>
@@ -210,40 +216,44 @@
         </dependency>
         <dependency>
             <groupId>org.finos.legend.pure</groupId>
-            <artifactId>legend-pure-m2-dsl-tds-pure</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-unclassified</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-standard</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-relation</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-pure-runtime-java-extension-shared-functions-relation</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-pure-platform-precisePrimitives-java</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.pure</groupId>
             <artifactId>legend-pure-m3-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.pure</groupId>
+            <artifactId>legend-pure-m3-precisePrimitives</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.pure</groupId>
+            <artifactId>legend-pure-m2-dsl-tds-pure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.pure</groupId>
             <artifactId>legend-pure-runtime-java-engine-compiled</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-functions-relation-pure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-platform-java</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-platform-precisePrimitives-java</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-unclassified</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-relation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-pure-runtime-java-extension-shared-functions-relation</artifactId>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.pure</groupId>
@@ -252,12 +262,8 @@
 
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-pure-platform-java</artifactId>
+            <artifactId>legend-engine-pure-runtime-java-extension-compiled-functions-standard</artifactId>
         </dependency>
-        <!--        <dependency>-->
-        <!--            <groupId>org.finos.legend.engine</groupId>-->
-        <!--            <artifactId>legend-engine-pure-code-compiled-core</artifactId>-->
-        <!--        </dependency>-->
 
         <dependency>
             <groupId>org.eclipse.collections</groupId>
@@ -267,6 +273,7 @@
             <groupId>org.eclipse.collections</groupId>
             <artifactId>eclipse-collections</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.finos.legend.pure</groupId>
             <artifactId>legend-pure-runtime-java-engine-interpreted</artifactId>
@@ -275,13 +282,11 @@
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-pure-runtime-java-extension-interpreted-functions-unclassified</artifactId>
-            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-pure-runtime-java-extension-interpreted-functions-relation</artifactId>
-            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
