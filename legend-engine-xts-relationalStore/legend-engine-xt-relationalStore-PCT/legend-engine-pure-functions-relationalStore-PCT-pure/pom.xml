@@ -49,49 +49,6 @@
                 <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-maven-compiler</artifactId>
             </plugin>
-            <plugin>
-                <groupId>org.finos.legend.pure</groupId>
-                <artifactId>legend-pure-maven-generation-par</artifactId>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>build-pure-jar</goal>
-                        </goals>
-                        <configuration>
-                            <sourceDirectory>src/main/resources</sourceDirectory>
-                            <purePlatformVersion>${legend.pure.version}</purePlatformVersion>
-                            <extraRepositories>
-                                <extraRepository>
-                                    ${project.basedir}/src/main/resources/core_external_test_connection.definition.json
-                                </extraRepository>
-                            </extraRepositories>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.finos.legend.pure</groupId>
-                        <artifactId>legend-pure-m2-dsl-diagram-grammar</artifactId>
-                        <version>${legend.pure.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.finos.legend.engine</groupId>
-                        <artifactId>legend-engine-xt-relationalStore-core-pure</artifactId>
-                        <version>${project.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.finos.legend.engine</groupId>
-                        <artifactId>legend-engine-pure-functions-legendCompiler-pure</artifactId>
-                        <version>${project.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.finos.legend.engine</groupId>
-                        <artifactId>legend-engine-pure-platform-precisePrimitives-java</artifactId>
-                        <version>${project.version}</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
         </plugins>
     </build>
 

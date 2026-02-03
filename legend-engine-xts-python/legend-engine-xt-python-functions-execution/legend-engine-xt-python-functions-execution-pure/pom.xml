@@ -34,34 +34,6 @@
                 <artifactId>legend-pure-maven-compiler</artifactId>
             </plugin>
             <plugin>
-                <groupId>org.finos.legend.pure</groupId>
-                <artifactId>legend-pure-maven-generation-par</artifactId>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>build-pure-jar</goal>
-                        </goals>
-                        <configuration>
-                            <sourceDirectory>src/main/resources</sourceDirectory>
-                            <purePlatformVersion>${legend.pure.version}</purePlatformVersion>
-                            <extraRepositories>
-                                <extraRepository>
-                                    ${project.basedir}/src/main/resources/core_external_python_execution.definition.json
-                                </extraRepository>
-                            </extraRepositories>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.finos.legend.pure</groupId>
-                        <artifactId>legend-pure-m2-dsl-diagram-grammar</artifactId>
-                        <version>${legend.pure.version}</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <executions>

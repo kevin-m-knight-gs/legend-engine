@@ -36,25 +36,6 @@
             </plugin>
             <plugin>
                 <groupId>org.finos.legend.pure</groupId>
-                <artifactId>legend-pure-maven-generation-par</artifactId>
-                <configuration>
-                    <sourceDirectory>src/main/resources</sourceDirectory>
-                    <purePlatformVersion>${legend.pure.version}</purePlatformVersion>
-                    <extraRepositories>
-                        <extraRepository>${project.basedir}/src/main/resources/pure_ide_debug.definition.json</extraRepository>
-                    </extraRepositories>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>build-pure-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-maven-generation-java</artifactId>
                 <executions>
                     <execution>
