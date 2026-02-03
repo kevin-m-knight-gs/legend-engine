@@ -393,11 +393,6 @@
                         </execution>
                     </executions>
                 </plugin>
-                <plugin>
-                    <groupId>org.finos.legend.pure</groupId>
-                    <artifactId>legend-pure-maven-generation-par</artifactId>
-                    <version>${legend.pure.version}</version>
-                </plugin>
 
                 <plugin>
                     <groupId>com.github.ferstl</groupId>

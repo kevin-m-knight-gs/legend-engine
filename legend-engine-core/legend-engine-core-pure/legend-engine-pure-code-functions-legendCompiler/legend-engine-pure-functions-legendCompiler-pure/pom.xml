@@ -33,30 +33,7 @@
                 <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-maven-compiler</artifactId>
             </plugin>
-            <plugin>
-                <groupId>org.finos.legend.pure</groupId>
-                <artifactId>legend-pure-maven-generation-par</artifactId>
-                <configuration>
-                    <sourceDirectory>src/main/resources</sourceDirectory>
-                    <purePlatformVersion>${legend.pure.version}</purePlatformVersion>
-                    <repositories>
-                        <repository>platform</repository>
-                        <repository>core_external_compiler</repository>
-                    </repositories>
-                    <extraRepositories>
-                        <extraRepository>${project.basedir}/src/main/resources/core_external_compiler.definition.json</extraRepository>
-                    </extraRepositories>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>build-pure-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
+            </plugins>
     </build>
 
     <dependencies>
