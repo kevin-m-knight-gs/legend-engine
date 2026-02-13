@@ -58,7 +58,9 @@
                         <repository>core_external_python_reverse_pct_legend_ql</repository>
                     </repositories>
                     <extraRepositories>
-                        <extraRepository>${project.basedir}/src/main/resources/core_external_python_reverse_pct_legend_ql.definition.json</extraRepository>
+                        <extraRepository>
+                            ${project.basedir}/src/main/resources/core_external_python_reverse_pct_legend_ql.definition.json
+                        </extraRepository>
                     </extraRepositories>
                 </configuration>
                 <executions>

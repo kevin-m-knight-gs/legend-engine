@@ -34,18 +34,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>dependency-analyze</id>
-                        <configuration>
-                            <!-- The dependency plugin analyzer raises these as false positives -->
-                            <ignoredUnusedDeclaredDependencies>
-                                <dependency>org.finos.legend.pure:legend-pure-m3-precisePrimitives</dependency>
-                                <dependency>org.finos.legend.engine:legend-engine-pure-functions-relation-pure</dependency>
-                            </ignoredUnusedDeclaredDependencies>
-                        </configuration>
-                    </execution>
-                </executions>
+                <configuration>
+                    <!-- The dependency plugin analyzer raises these as false positives -->
+                    <ignoredUnusedDeclaredDependencies>
+                        <ignoredUnusedDeclaredDependency>org.finos.legend.pure:legend-pure-m3-precisePrimitives</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>org.finos.legend.engine:legend-engine-pure-functions-relation-pure</ignoredUnusedDeclaredDependency>
+                    </ignoredUnusedDeclaredDependencies>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.finos.legend.pure</groupId>
