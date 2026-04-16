@@ -855,10 +855,22 @@ public class PureModel implements IPureModel
         if (metadataAccessor.supportsGetPackageableElement())
         {
             packageableElement = metadataAccessor.getPackageableElement(fullPath);
-            if (packageableElement != null)
+            if (packageableElement instanceof Type)
             {
-                this.packageableElementsIndex.putIfAbsent(fullPathWithPrefix, packageableElement);
-                return packageableElement;
+                this.immutables.add(fullPathWithPrefix);
+                this.typesIndex.putIfAbsent(fullPathWithPrefix, (Type) packageableElement);
+            }
+            else if ((packageableElement instanceof Association) || (packageableElement instanceof PackageableFunction))
+            {
+                this.immutables.add(fullPathWithPrefix);
+            }
+            else if (!(packageableElement instanceof org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.extension.Profile))
+            {
+                org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.PackageableElement foundPackageableElement = findPackageableElement(fullPathWithPrefix);
+                if (foundPackageableElement != null)
+                {
+                    packageableElement = foundPackageableElement;
+                }
             }
         }
         else
@@ -886,10 +898,10 @@ public class PureModel implements IPureModel
             {
                 return packageableElement;
             }
-        }
 
-        // For other elements search the package tree
-        packageableElement = findPackageableElement(fullPathWithPrefix);
+            // For other elements search the package tree
+            packageableElement = findPackageableElement(fullPathWithPrefix);
+        }
         if (packageableElement != null)
         {
             this.packageableElementsIndex.put(fullPathWithPrefix, packageableElement);
@@ -962,7 +974,11 @@ public class PureModel implements IPureModel
         if (metadataAccessor.supportsGetPackageableElement())
         {
             CoreInstance element = metadataAccessor.getPackageableElement(fullPath);
-            if (element instanceof Type)
+            if (element == null)
+            {
+                type = tryGetUnitByLegacyId(fullPath);
+            }
+            else if (element instanceof Type)
             {
                 type = (Type) element;
             }
@@ -1171,10 +1187,10 @@ public class PureModel implements IPureModel
         }
         if (profile == null)
         {
-            Metadata metadata = this.executionSupport.getMetadata();
-            if (metadata.supportsElementByPath())
+            MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
+            if (metadataAccessor.supportsGetPackageableElement())
             {
-                CoreInstance element = metadata.getElementByPath(fullPath);
+                CoreInstance element = metadataAccessor.getPackageableElement(fullPath);
                 if (element instanceof org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.extension.Profile)
                 {
                     profile = (org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.extension.Profile) element;
