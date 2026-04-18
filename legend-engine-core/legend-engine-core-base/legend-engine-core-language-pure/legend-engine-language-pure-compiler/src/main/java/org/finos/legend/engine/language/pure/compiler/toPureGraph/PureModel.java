@@ -974,7 +974,11 @@ public class PureModel implements IPureModel
         if (metadataAccessor.supportsGetPackageableElement())
         {
             CoreInstance element = metadataAccessor.getPackageableElement(fullPath);
-            if (element instanceof Type)
+            if (element == null)
+            {
+                type = tryGetUnitByLegacyId(fullPath);
+            }
+            else if (element instanceof Type)
             {
                 type = (Type) element;
             }
