@@ -1,4 +1,4 @@
-// Copyright 2022 Goldman Sachs
+// Copyright 2026 Goldman Sachs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// ------------------------------------------------------------------------------ DATA -----------------------------------------------
-
-Class meta::relational::metamodel::data::RelationalCSVData extends  meta::pure::data::EmbeddedData
+Class meta::protocols::pure::v1_33_0::metamodel::store::relational::connection::alloy::specification::DuckDBDatasourceSpecification extends meta::protocols::pure::v1_33_0::metamodel::store::relational::connection::alloy::specification::DatasourceSpecification
 {
-  tables: meta::relational::metamodel::data::RelationalCSVTable[*];
+    path:String[0..1];
+    testDataSetupCsv:String[0..1];
+    testDataSetupSqls:String[*];
 }
 
-Class meta::relational::metamodel::data::RelationalCSVTable
-{
-  schema: String[1];
-  table: String[1];
-  values: String[1];
-}
