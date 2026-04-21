@@ -22,6 +22,7 @@ import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.ConcurrentMutableMap;
+import org.eclipse.collections.api.map.MapIterable;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.set.ImmutableSet;
 import org.eclipse.collections.api.set.MutableSet;
@@ -31,7 +32,6 @@ import org.eclipse.collections.impl.multimap.list.FastListMultimap;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.eclipse.collections.impl.utility.LazyIterate;
 import org.eclipse.collections.impl.utility.ListIterate;
-import org.finos.legend.engine.language.pure.compiler.MetadataWrapper;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.defect.Defect;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.extension.CompilerExtensions;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.extension.Processor;
@@ -86,6 +86,7 @@ import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.Unit;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.generics.GenericType;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.valuespecification.VariableExpression;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.store.Store;
+import org.finos.legend.pure.m3.exception.PureExecutionException;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.PackageableElement.PackageableElement;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
@@ -109,6 +110,7 @@ import org.finos.legend.pure.runtime.java.compiled.extension.CompiledExtensionLo
 import org.finos.legend.pure.runtime.java.compiled.generation.processors.support.coreinstance.AbstractLazyReflectiveCoreInstance;
 import org.finos.legend.pure.runtime.java.compiled.metadata.Metadata;
 import org.finos.legend.pure.runtime.java.compiled.metadata.MetadataAccessor;
+import org.finos.legend.pure.runtime.java.compiled.metadata.MetadataHolder;
 import org.finos.legend.pure.runtime.java.compiled.metadata.MetadataPelt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,6 +149,8 @@ public class PureModel implements IPureModel
     private static final MutableList<CompiledExtension> compiledExtensions = CompiledExtensionLoader.extensions();
     private static final ConcurrentMutableMap<String, MutableMap<String, org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.Function<? extends Object>>> fcache = ConcurrentHashMap.newMap();
 
+    private final Metadata coreMetadata;
+    private final MetadataAccessor coreMetadataAccessor;
     private final CompiledExecutionSupport executionSupport;
     private final DeploymentMode deploymentMode;
     private final PureModelProcessParameter pureModelProcessParameter;
@@ -200,13 +204,15 @@ public class PureModel implements IPureModel
         this.extensions = extensions;
         this.deploymentMode = deploymentMode;
         this.pureModelProcessParameter = pureModelProcessParameter;
+        this.coreMetadata = (metaData == null) ? METADATA_LAZY : metaData;
+        this.coreMetadataAccessor = new MetadataHolder(this.coreMetadata);
         try
         {
             ConsoleCompiled console = new ConsoleCompiled();
             console.disable();
             this.executionSupport = new CompiledExecutionSupport(
                     new JavaCompilerState(null, classLoader),
-                    new CompiledProcessorSupport(classLoader, metaData == null ? new MetadataWrapper(this.root, METADATA_LAZY, this) : metaData, Sets.mutable.empty()),
+                    new CompiledProcessorSupport(classLoader, new PureModelMetadata(), Sets.mutable.empty()),
                     null,
                     new CompositeCodeStorage(
                             new ClassLoaderCodeStorage(repositories),
@@ -239,7 +245,9 @@ public class PureModel implements IPureModel
                 this.typesGenericTypeIndex = new ConcurrentHashMap<>();
                 this.packageableElementsIndex = new ConcurrentHashMap<>();
             }
-            this.typesIndex.put(M3Paths.Package, this.executionSupport.getMetadataAccessor().getClass(M3Paths.Package));
+            this.packageableElementsIndex.put(M3Paths.Root, this.root);
+            this.packageableElementsIndex.put("::", this.root);
+            this.typesIndex.put(M3Paths.Package, this.coreMetadataAccessor.getClass(M3Paths.Package));
             this.immutables.add(M3Paths.Package);
             modifyRootClassifier();
 
@@ -587,24 +595,23 @@ public class PureModel implements IPureModel
 
     private void initializeMultiplicities()
     {
-        this.multiplicitiesIndex.put("zero", (PackageableMultiplicity) this.executionSupport.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.PureZero));
-        this.multiplicitiesIndex.put("one", (PackageableMultiplicity) this.executionSupport.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.PureOne));
-        this.multiplicitiesIndex.put("zeroone", (PackageableMultiplicity) this.executionSupport.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.ZeroOne));
-        this.multiplicitiesIndex.put("onemany", (PackageableMultiplicity) this.executionSupport.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.OneMany));
-        this.multiplicitiesIndex.put("zeromany", (PackageableMultiplicity) this.executionSupport.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.ZeroMany));
+        this.multiplicitiesIndex.put("zero", (PackageableMultiplicity) this.coreMetadata.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.PureZero));
+        this.multiplicitiesIndex.put("one", (PackageableMultiplicity) this.coreMetadata.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.PureOne));
+        this.multiplicitiesIndex.put("zeroone", (PackageableMultiplicity) this.coreMetadata.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.ZeroOne));
+        this.multiplicitiesIndex.put("onemany", (PackageableMultiplicity) this.coreMetadata.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.OneMany));
+        this.multiplicitiesIndex.put("zeromany", (PackageableMultiplicity) this.coreMetadata.getMetadata(M3Paths.PackageableMultiplicity, M3Paths.ZeroMany));
     }
 
     private void initializePrimitiveTypes()
     {
-        MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
         PrimitiveUtilities.getPrimitiveTypeNames().forEach(typeName ->
         {
-            this.typesIndex.put(typeName, metadataAccessor.getPrimitiveType(typeName));
+            this.typesIndex.put(typeName, this.coreMetadataAccessor.getPrimitiveType(typeName));
             this.immutables.add(typeName);
         });
 
         // This is added to support legacy Binary primitive type usages
-        this.typesIndex.put("Binary", metadataAccessor.getPrimitiveType(ModelRepository.BYTE_TYPE_NAME));
+        this.typesIndex.put("Binary", this.coreMetadataAccessor.getPrimitiveType(ModelRepository.BYTE_TYPE_NAME));
         this.immutables.add("Binary");
     }
 
@@ -785,7 +792,7 @@ public class PureModel implements IPureModel
     {
         try
         {
-            return function.apply(this.executionSupport.getMetadataAccessor(), id);
+            return function.apply(this.coreMetadataAccessor, id);
         }
         catch (Exception ignore)
         {
@@ -851,10 +858,9 @@ public class PureModel implements IPureModel
             return packageableElement;
         }
 
-        MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
-        if (metadataAccessor.supportsGetPackageableElement())
+        if (this.coreMetadataAccessor.supportsGetPackageableElement())
         {
-            packageableElement = metadataAccessor.getPackageableElement(fullPath);
+            packageableElement = this.coreMetadataAccessor.getPackageableElement(fullPath);
             if (packageableElement instanceof Type)
             {
                 this.immutables.add(fullPathWithPrefix);
@@ -970,10 +976,9 @@ public class PureModel implements IPureModel
         }
 
         // Search for system types in the Pure graph
-        MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
-        if (metadataAccessor.supportsGetPackageableElement())
+        if (this.coreMetadataAccessor.supportsGetPackageableElement())
         {
-            CoreInstance element = metadataAccessor.getPackageableElement(fullPath);
+            CoreInstance element = this.coreMetadataAccessor.getPackageableElement(fullPath);
             if (element == null)
             {
                 type = tryGetUnitByLegacyId(fullPath);
@@ -1105,10 +1110,9 @@ public class PureModel implements IPureModel
     {
         String fullPathWithPrefix = addPrefixToTypeReference(fullPath);
         PackageableFunction<?> packageableFunction;
-        MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
-        if (metadataAccessor.supportsGetPackageableElement())
+        if (this.coreMetadataAccessor.supportsGetPackageableElement())
         {
-            org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.PackageableElement element = metadataAccessor.getPackageableElement(fullPath);
+            org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.PackageableElement element = this.coreMetadataAccessor.getPackageableElement(fullPath);
             packageableFunction = (element instanceof PackageableFunction) ? (PackageableFunction<?>) element : null;
         }
         else
@@ -1139,10 +1143,9 @@ public class PureModel implements IPureModel
         if (association == null)
         {
             // Search for system types in the Pure graph
-            MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
-            if (metadataAccessor.supportsGetPackageableElement())
+            if (this.coreMetadataAccessor.supportsGetPackageableElement())
             {
-                org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.PackageableElement element = metadataAccessor.getPackageableElement(fullPath);
+                org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.PackageableElement element = this.coreMetadataAccessor.getPackageableElement(fullPath);
                 if (element instanceof Association)
                 {
                     association = (Association) element;
@@ -1187,10 +1190,9 @@ public class PureModel implements IPureModel
         }
         if (profile == null)
         {
-            MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
-            if (metadataAccessor.supportsGetPackageableElement())
+            if (this.coreMetadataAccessor.supportsGetPackageableElement())
             {
-                CoreInstance element = metadataAccessor.getPackageableElement(fullPath);
+                CoreInstance element = this.coreMetadataAccessor.getPackageableElement(fullPath);
                 if (element instanceof org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.extension.Profile)
                 {
                     profile = (org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.extension.Profile) element;
@@ -1485,8 +1487,7 @@ public class PureModel implements IPureModel
 
     public org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.Function<?> getFunction(String functionName, boolean isNative)
     {
-        MetadataAccessor metadataAccessor = this.executionSupport.getMetadataAccessor();
-        return isNative ? metadataAccessor.getNativeFunction(functionName) : metadataAccessor.getConcreteFunctionDefinition(functionName);
+        return isNative ? this.coreMetadataAccessor.getNativeFunction(functionName) : this.coreMetadataAccessor.getConcreteFunctionDefinition(functionName);
     }
 
     public DeploymentMode getDeploymentMode()
@@ -1711,5 +1712,82 @@ public class PureModel implements IPureModel
     public MutableSet<String> taxonomyTypes(String taxonomyName)
     {
         return Objects.requireNonNull(this.extensions.getExtraSubTypesForFunctionMatching().get(taxonomyName), () -> "no taxonomyName found for: " + taxonomyName);
+    }
+
+    private class PureModelMetadata implements Metadata
+    {
+        @Override
+        public void startTransaction()
+        {
+            PureModel.this.coreMetadata.startTransaction();
+        }
+
+        @Override
+        public void commitTransaction()
+        {
+            PureModel.this.coreMetadata.commitTransaction();
+        }
+
+        @Override
+        public void rollbackTransaction()
+        {
+            PureModel.this.coreMetadata.rollbackTransaction();
+        }
+
+        @Override
+        public CoreInstance getMetadata(String classifier, String id)
+        {
+            if ((M3Paths.Package.equals(classifier) && M3Paths.Root.equals(id)))
+            {
+                return PureModel.this.root;
+            }
+            try
+            {
+                CoreInstance result = PureModel.this.coreMetadata.getMetadata(classifier, id);
+                if (result == null)
+                {
+                    System.out.println("NOT FOUND: PureModelMetadata.getMetadata(\"" + classifier + "\", \"" + id + "\")");
+                }
+                return result;
+            }
+            catch (RuntimeException e)
+            {
+                CoreInstance type = getTypeFromIndex(id.startsWith("Root::") ? id.substring(6) : id);
+                if (type != null)
+                {
+                    return type;
+                }
+                throw new PureExecutionException(e);
+            }
+        }
+
+        @Override
+        public MapIterable<String, CoreInstance> getMetadata(String classifier)
+        {
+            return PureModel.this.coreMetadata.getMetadata(classifier);
+        }
+
+        @Override
+        public CoreInstance getEnum(String enumerationName, String enumName)
+        {
+            return PureModel.this.coreMetadata.getEnum(enumerationName, enumName);
+        }
+
+        @Override
+        public boolean supportsElementByPath()
+        {
+            return true;
+        }
+
+        @Override
+        public CoreInstance getElementByPath(String path)
+        {
+            CoreInstance result = (M3Paths.Root.equals(path) || "::".equals(path)) ? PureModel.this.root : getPackageableElement_safe(path);
+            if (result == null)
+            {
+                System.out.println("NOT FOUND: PureModelMetadata.getElementByPath(\"" + path + "\")");
+            }
+            return result;
+        }
     }
 }
