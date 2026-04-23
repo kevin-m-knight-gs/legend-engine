@@ -223,8 +223,8 @@ legend-engine-core/
       test/resources/
         emit-models/                      ← Bootstrap models for self-testing
           basic/
-            class-simple/
-              emit.yaml
+            class-simple.emit.yaml        ← Test descriptor
+            class-simple/                 ← Source files referenced by YAML
               model.pure
 ```
 
@@ -244,8 +244,8 @@ legend-engine-xts-relational/
   legend-engine-xt-relational-*-test/     ← Existing or new test module
     src/test/resources/
       emit-models/
-        relational-simple/                ← Model root
-          emit.yaml
+        relational-simple.emit.yaml       ← Test descriptor configures sources
+        relational-simple/                ← Model sources (paths resolved relative to YAML)
           model/
             types.pure
           store/
@@ -256,8 +256,8 @@ legend-engine-xts-relational/
             connection.pure
           runtime/
             runtime.pure
+        relational-joins.emit.yaml
         relational-joins/
-          emit.yaml
           model/
             types.pure
             associations.pure
@@ -271,8 +271,8 @@ legend-engine-xts-service/
   legend-engine-xt-service-*-test/
     src/test/resources/
       emit-models/
-        service-with-tests/               ← Model root
-          emit.yaml
+        service-with-tests.emit.yaml
+        service-with-tests/
           model/
             types.pure
           mapping/
@@ -285,24 +285,23 @@ legend-engine-xts-service/
             connection.pure
           runtime/
             runtime.pure
+        multi-execution.emit.yaml
         multi-execution/
-          emit.yaml
           ...
 
 legend-engine-xts-generation/
   ...
     src/test/resources/
       emit-models/
+        avro-generation.emit.yaml
         avro-generation/
-          emit.yaml
           model/
             types.pure
           generation/
             genSpec.pure
 ```
 
-The `EMITRunner.runFromDirectory(path)` method recursively discovers all `.pure` files under
-the given root directory. The `emit.yaml` file must sit at the root of the model tree.
+The `EMITRunner` automatically discovers all `*.emit.yaml` files. The YAML file explicitly configures which directories and files comprise the test.
 
 This distribution model has several advantages:
 - **Ownership**: Tests live near the code they exercise, so feature owners maintain them.
@@ -348,34 +347,34 @@ public class EMITResult
 ```java
 public enum EMITPhase
 {
-  PARSE,
-  COMPILE,
-  MODEL_GENERATION,
-  FILE_GENERATION,
-  TEST_EXECUTION,
-  PLAN_GENERATION
+    PARSE,
+    COMPILE,
+    MODEL_GENERATION,
+    FILE_GENERATION,
+    TEST_EXECUTION,
+    PLAN_GENERATION
 }
 ```
 
 ```java
 public class EMITPhaseResult
 {
-  public EMITPhase phase;
-  public boolean success;
-  public long durationMs;
-  public String errorMessage;         // null if success
-  public Exception exception;         // null if success
+    public EMITPhase phase;
+    public boolean success;
+    public long durationMs;
+    public String errorMessage;         // null if success
+    public Exception exception;         // null if success
 
-  // Phase-specific data (populated on success)
-  public PureModelContextData parsedData;         // after PARSE
-  public PureModel compiledModel;                 // after COMPILE
-  public PureModelContextData generatedModelData;                       // after MODEL_GENERATION
-  public Map<FileGenerationSpecification, List<GenerationOutput>> fileGenerationOutputs; // after FILE_GENERATION (file generations)
-  public Map<ArtifactGenerationExtension, List<ArtifactGenerationResult>> artifactOutputs; // after FILE_GENERATION (artifact generations)
-  public RunTestsResult testResults;                                     // after TEST_EXECUTION (Testable)
-  public List<RichMappingTestResult> legacyMappingTestResults;           // after TEST_EXECUTION (Legacy Mapping)
-  public List<RichServiceTestResult> legacyServiceTestResults;           // after TEST_EXECUTION (Legacy Service)
-  public List<ExecutionPlan> plans;                                      // after PLAN_GENERATION
+    // Phase-specific data (populated on success)
+    public PureModelContextData parsedData;         // after PARSE
+    public PureModel compiledModel;                 // after COMPILE
+    public PureModelContextData generatedModelData;                       // after MODEL_GENERATION
+    public Map<FileGenerationSpecification, List<GenerationOutput>> fileGenerationOutputs; // after FILE_GENERATION (file generations)
+    public Map<ArtifactGenerationExtension, List<ArtifactGenerationResult>> artifactOutputs; // after FILE_GENERATION (artifact generations)
+    public RunTestsResult testResults;                                     // after TEST_EXECUTION (Testable)
+    public List<RichMappingTestResult> legacyMappingTestResults;           // after TEST_EXECUTION (Legacy Mapping)
+    public List<RichServiceTestResult> legacyServiceTestResults;           // after TEST_EXECUTION (Legacy Service)
+    public List<ExecutionPlan> plans;                                      // after PLAN_GENERATION
 }
 ```
 
@@ -383,13 +382,19 @@ public class EMITPhaseResult
 
 ## 5. Phase Details
 
+### 5.0 Initialization (Pre-Pipeline)
+
+- Parse the `*.emit.yaml` file to read the explicit source configuration.
+- Recursively discover `.pure` files under the specified `roots` (resolving paths relative to the directory containing the YAML file), applying any `excludes`.
+- **Virtual Path Relativization**: Assign each discovered `.pure` file a virtual file path relative to the root directory it was found in.
+- **Clash Validation**: Assert that no two files from different roots resolve to the same virtual path. If a clash occurs, test initialization fails before any phases run.
+
 ### 5.1 Phase 1: Parse
 
-- Recursively discover all `.pure` files under the model root directory.
-- Read each file's content.
+- Read each discovered file's content.
 - Call `PureGrammarParser.newInstance().parseModel(content)` for each file.
 - Combine the resulting `PureModelContextData` objects using the builder's `addPureModelContextData()`.
-- **Success criteria**: No parse exceptions.
+- **Success criteria**: No grammar parse exceptions.
 - **Failure mode**: `EngineException` with source location information.
 
 ### 5.2 Phase 2: Compile
@@ -471,44 +476,46 @@ The primary way to use EMIT is via JUnit tests. A typical test looks like:
 ```java
 public class MyModelEMITTest
 {
-  @Test
-  public void testMyModel()
-  {
-    EMITRunner runner = new EMITRunner();
-    EMITResult result = runner.runFromDirectory(
+    @Test
+    public void testMyModel()
+    {
+        EMITRunner runner = new EMITRunner();
+        EMITResult result = runner.runFromDirectory(
             Paths.get("src/test/resources/emit-models/my-model")
-    );
-    assertTrue(result.isSuccess(), result.getSummary());
-  }
+        );
+        assertTrue(result.isSuccess(), result.getSummary());
+    }
 }
 ```
 
-### 6.1 Parameterized Tests
+### 6.1 Parameterized Tests & Auto-Discovery
 
-For testing multiple models, a parameterized approach is recommended:
+The recommended way to test models is to use the framework's auto-discovery mechanism, which scans the classpath (or a given source tree) for all `*.emit.yaml` descriptors:
 
 ```java
 @RunWith(Parameterized.class)
 public class EMITParameterizedTest
 {
     @Parameterized.Parameters(name = "{0}")
-    public static Collection<Object[]> models()
+    public static Collection<Object[]> models() throws IOException
     {
-        return Arrays.asList(
-            new Object[]{"simple-class", "src/test/resources/emit-models/simple-class"},
-            new Object[]{"service-model", "src/test/resources/emit-models/service-model"}
-        );
+        // Automatically discovers all *.emit.yaml files in the classpath/module
+        return EMITCatalogBuilder.discoverTests("emit-models/");
     }
 
     private final String name;
-    private final String path;
+    private final EMITModelDescriptor descriptor;
 
-    public EMITParameterizedTest(String name, String path) { ... }
+    public EMITParameterizedTest(String name, EMITModelDescriptor descriptor) 
+    {
+        this.name = name;
+        this.descriptor = descriptor;
+    }
 
     @Test
     public void testModel()
     {
-        EMITResult result = new EMITRunner().runFromDirectory(Paths.get(path));
+        EMITResult result = new EMITRunner().run(descriptor);
         assertTrue(result.isSuccess(), result.getSummary());
     }
 }
@@ -521,18 +528,30 @@ public class EMITParameterizedTest
 The EMIT model collection doubles as a **searchable catalog of feature examples**. This section
 defines the metadata conventions and tooling foundations that make this possible.
 
-### 7.1 Model Metadata (`emit.yaml`)
+### 7.1 Model Metadata (`*.emit.yaml`)
 
-Every EMIT model directory contains a `emit.yaml` file with structured metadata:
+Every EMIT test is defined by a `*.emit.yaml` file with structured metadata and source configurations:
 
 ```yaml
-# emit.yaml — metadata for a single EMIT example model
+# service-relational-with-generation.emit.yaml
 name: service-relational-with-generation
 title: "Relational Service with File Generation"
 description: |
   Demonstrates a service backed by a relational mapping with a
   Relational-to-H2 connection, including test data, test suites,
   and an Avro file generation specification.
+
+# Explicit source configuration. Paths are resolved relative to
+# the directory containing this YAML file.
+modelSources:
+  roots:
+    - model/
+    - store/
+    - mapping/
+    - service/
+  excludes:
+    - store/experimental/
+    - mapping/**/*_draft.pure
 
 # Features exercised by this model.
 # Uses a controlled taxonomy (see §7.2).
@@ -646,15 +665,15 @@ public class EMITCatalogIndex
 ```java
 public class EMITModelDescriptor
 {
-    public String name;               // directory name
-    public String title;              // human-readable title
-    public String description;        // multi-line description
-    public List<String> features;     // feature tags
-    public List<String> stores;       // store types
-    public String complexity;         // basic / intermediate / advanced
-    public List<String> tags;         // free-form tags
-    public Path directory;            // path to model directory
-    public List<Path> pureFiles;      // resolved .pure file paths
+  public String name;               // directory name
+  public String title;              // human-readable title
+  public String description;        // multi-line description
+  public List<String> features;     // feature tags
+  public List<String> stores;       // store types
+  public String complexity;         // basic / intermediate / advanced
+  public List<String> tags;         // free-form tags
+  public Path directory;            // path to model directory
+  public List<Path> pureFiles;      // resolved .pure file paths
 }
 ```
 
@@ -686,7 +705,7 @@ EMITRunner runner = new EMITRunner();
 EMITResult result = runner.runFromDirectory(Paths.get("emit-models/service/service-with-tests"));
 
 System.out.println(result.getDescriptor().title);   // "Service with Test Suites"
-        System.out.println(result.getDescriptor().features); // [service, service-test, class]
+System.out.println(result.getDescriptor().features); // [service, service-test, class]
 ```
 
 ---
@@ -695,7 +714,7 @@ System.out.println(result.getDescriptor().title);   // "Service with Test Suites
 
 A minimal example model for EMIT testing, with its accompanying `emit.yaml`:
 
-**`emit.yaml`**:
+**`service-simple.emit.yaml`**:
 ```yaml
 name: service-simple
 title: "Simple Service with M2M Mapping"
@@ -703,6 +722,11 @@ description: |
   A basic service using a model-to-model mapping. Demonstrates
   class definition, empty mapping, service definition with a
   query and test suite.
+
+modelSources:
+  roots:
+    - service-simple/
+
 features:
   - class
   - derived-property
