@@ -35,8 +35,8 @@ The harvest process has five stages:
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │   DISCOVER   │────▶│   CLASSIFY   │────▶│    SELECT    │────▶│  TRANSLATE   │────▶│    PLACE     │
 │              │     │              │     │              │     │              │     │              │
-│ Scan GitLab  │     │ Feature      │     │ Pick best    │     │ Simplify     │     │ Module &     │
-│ for Studio   │     │ fingerprint  │     │ candidate    │     │ packages,    │     │ emit.yaml    │
+│ Scan for     │     │ Feature      │     │ Pick best    │     │ Simplify     │     │ Module &     │
+│ Studio       │     │ fingerprint  │     │ candidate    │     │ packages,    │     │ emit.yaml    │
 │ projects     │     │ each project │     │ per feature  │     │ restructure  │     │ generation   │
 │              │     │              │     │ combination  │     │              │     │              │
 └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
@@ -50,11 +50,10 @@ better examples.
 
 ## 3. Stage 1: Discover
 
-### 3.1 Scanning GitLab
+### 3.1 Scanning for Studio Projects
 
-Use the GitLab API to enumerate all projects in the instance. For each project, determine
-whether it is a Studio project by checking for the presence of `.pure` files in Legend
-grammar under the project's source directory.
+Use the backend abstraction (see §8.2) to enumerate all Studio projects on the hosting
+platform. For each project, determine whether it contains `.pure` files in Legend grammar.
 
 ### 3.2 Model Extraction
 
@@ -62,17 +61,13 @@ For each identified Studio project, extract the `.pure` files from the default b
 Studio projects store their models as `.pure` files written in Legend Engine Grammar — the
 same grammar format used by EMIT tests.
 
-Parse the files into `PureModelContextData` using `PureGrammarParser`.
 If the project has declared dependencies (other versioned Studio projects), resolve those
-transitively to understand the full compilation context, but keep the primary model files
+transitively and download the dependency files as well, keeping the primary model files
 separate from dependency files.
 
-### 3.3 Compilation Check
-
-Attempt to compile each project's `PureModelContextData` (with dependencies). Projects that
-fail to compile are excluded from harvesting — they are not suitable as examples.
-
-Record basic statistics: total element count, compilation time.
+This stage is implemented by the SDLC-side project extractor (see §8.2). Its output is a
+portable directory of `.pure` files and project manifests, which is consumed by the
+subsequent stages in the engine-side harvester.
 
 ---
 
@@ -105,7 +100,7 @@ Projects are bucketed into `basic`, `intermediate`, and `advanced`.
 ### 4.3 Output
 
 The classification stage produces a **project manifest**: a JSON file mapping each project
-to its feature fingerprint, complexity score, element count, and GitLab metadata (project ID,
+to its feature fingerprint, complexity score, element count, and project metadata (project ID,
 URL, branch).
 
 ---
@@ -542,4 +537,4 @@ The expectation is that the tool does 80% of the work, and human review handles 
 | **Sensitive data in production models** | The translation stage strips organization-specific names. Test data embedded in service tests must also be reviewed for sensitive content. Consider an automated PII scan. |
 | **Translation fidelity** | Every translated model is validated by running the full EMIT pipeline. Failures are flagged for manual review. |
 | **Stale harvest** | The tool can be re-run periodically. New projects or updated projects with novel feature combinations are discovered automatically. |
-| **Overwhelming volume** | The selection stage ensures at most one test per feature fingerprint. Even with thousands of projects, the curated output is bounded by the size of the feature taxonomy. |
+| **Overwhelming volume** | The selection stage limits candidates to a small number per feature fingerprint (up to one per complexity tier). Even with thousands of projects, the curated output is bounded by the size of the feature taxonomy. |
