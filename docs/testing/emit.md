@@ -384,11 +384,11 @@ public class EMITPhaseResult
 
 ### 5.0 Initialization (Pre-Pipeline)
 
-- Parse the `*.emit.yaml` file to read the explicit source configuration, which includes `roots` (the primary model) and optionally `dependencies`. Sources can be specified as either file system paths (`path: ...`) or classpath resources (`resource: ...`).
-- Recursively discover `.pure` files under the specified `roots`, applying any `excludes`. File paths are resolved relative to the directory containing the YAML file; classpath resources are resolved via the classloader.
-- Discover dependencies: If a dependency points to a directory or resource package, discover `.pure` files within it. If it points to another `*.emit.yaml` file, recursively read its configuration and discover its sources.
-- **Scope Segmentation**: Maintain a distinction between files loaded from the primary model `roots` and those loaded from `dependencies`. Dependencies are only in scope for the Parsing and Compiling phases.
-- **Virtual Path Relativization**: Assign each discovered `.pure` file a virtual file path relative to the root directory it was found in.
+- Parse the `*.emit.yaml` file to read the explicit source configuration, which includes `model` (the primary model files) and optionally `dependencies`.
+- `model`: A list of `.pure` file resource paths.
+- `dependencies`: Can be specified either as explicit `.pure` file resource paths or as other `*.emit.yaml` file resource paths. For `*.emit.yaml` dependencies, specific resources may be excluded via an `excludes` list that supports `*` and `**` wildcards.
+- **Scope Segmentation**: Maintain a distinction between files loaded from the primary `model` list and those loaded via `dependencies`. Dependencies are not in scope for generations, tests, etc.
+- **Virtual Path Relativization**: Use the classpath resource path as the virtual file path for each discovered `.pure` file.
 - **Clash Validation**: Assert that no two files resolve to the same virtual path. If a clash occurs, test initialization fails before any phases run.
 
 ### 5.1 Phase 1: Parse
@@ -449,7 +449,7 @@ This phase covers both types of file generation, mirroring what `FileGenerationM
 - **Run Testable tests**: Find all `Testable` elements in the compiled `PureModel` (e.g., services, mappings, functions with test suites).
 - **Run Legacy Mapping tests**: Find `Mapping` elements with legacy `MappingTest` / `MappingTestSuite` elements.
 - **Run Legacy Service tests**: Find `Service` elements with legacy `ServiceTest` elements.
-- **Dependency Exclusion**: Only execute tests for elements defined in the primary model `roots`. Any test defined in an element loaded via `dependencies` MUST be ignored.
+- **Dependency Exclusion**: Only execute tests for elements defined in the primary `model`. Any test defined in an element loaded via `dependencies` MUST be ignored.
 - Use `TestableRunner.doTests(...)`, the legacy `MappingTestRunner`, and the legacy `ServiceTestRunner` to execute the in-scope tests, producing their respective result objects.
 - This phase mirrors `legend-sdlc-test-maven-plugin`.
 - **Success criteria**: All in-scope tests (Testable and legacy) pass.
@@ -542,22 +542,21 @@ description: |
   Relational-to-H2 connection, including test data, test suites,
   and an Avro file generation specification.
 
-# Explicit source configuration. You can specify sources as file
-# system paths or as classpath resources. File paths are resolved
-# relative to the directory containing this YAML file.
+# Explicit source configuration. Model files must be specified strictly
+# as explicit classpath resources. Dependencies are also specified as
+# resources, either as explicit .pure files or as other .emit.yaml files.
+# For .emit.yaml dependencies, specific resources can be excluded using wildcards.
 modelSources:
-  roots:
-    - path: model/
-    - path: store/
-    - path: mapping/
-    - path: service/
+  model:
+    - emit-models/complex/service-relational-with-generation/model.pure
+    - emit-models/complex/service-relational-with-generation/store.pure
+    - emit-models/complex/service-relational-with-generation/mapping.pure
+    - emit-models/complex/service-relational-with-generation/service.pure
   dependencies:
-    - path: ../shared-types/            # Directory dependency
-    - path: ../core-api.emit.yaml       # Another EMIT model dependency
-    - resource: org/finos/legend/api/   # Classpath resource dependency
-  excludes:
-    - store/experimental/
-    - mapping/**/*_draft.pure
+    - emit-models/shared-types/common.pure
+    - source: emit-models/core-api.emit.yaml
+      excludes:
+        - emit-models/core-api/**/*_experimental.pure
 
 # Features exercised by this model.
 # Uses a controlled taxonomy (see §7.2).
@@ -730,10 +729,10 @@ description: |
   query and test suite.
 
 modelSources:
-  roots:
-    - path: service-simple/
+  model:
+    - emit-models/basic/service-simple/model.pure
   dependencies:
-    - path: ../base-types.emit.yaml
+    - emit-models/basic/base-types.emit.yaml
 
 features:
   - class
