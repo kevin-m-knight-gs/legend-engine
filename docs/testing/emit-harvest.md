@@ -268,7 +268,7 @@ The pipeline is split across two separate tools:
 
 **Project Extractor** (in `legend-sdlc`):
 ```
-sdlc-extract --gitlab-url <URL> --token <TOKEN> --output-dir ./extracted/
+sdlc-extract --config extractor-config.yaml --output-dir ./extracted/
 ```
 
 **Harvester** (in `legend-engine`):
@@ -294,16 +294,19 @@ files and `PureModelContextData`, which are engine-native concepts.
 
 #### SDLC-side: Project Extractor
 
-A lightweight tool in `legend-sdlc` (e.g., `legend-sdlc-project-extractor`) that reads
-Studio projects from GitLab and exports their `.pure` files into a portable directory
-structure. It depends only on existing SDLC modules — no `legend-engine` dependency required.
+A tool in `legend-sdlc` (e.g., `legend-sdlc-project-extractor`) that reads Studio projects
+from any supported backend and exports their `.pure` files into a portable directory
+structure.
 
-```
-sdlc-extract --gitlab-url <URL> --token <TOKEN> --output-dir ./extracted/
-```
+The extractor is **backend-agnostic**. It uses a backend abstraction that encapsulates
+how to enumerate projects, read file contents, and resolve dependencies for a given
+hosting platform. Backend implementations are provided for each supported platform
+(e.g., GitLab, GitHub, Bitbucket) and selected via configuration. This requires
+extracting the project structure logic from `legend-sdlc-server` into a standalone module
+that can be used without the full server.
 
-For each Studio project, it:
-1. Uses the SDLC project structure to locate the project's `.pure` files.
+For each Studio project, the extractor:
+1. Uses the backend to locate the project's `.pure` files.
 2. Resolves declared dependencies to other Studio projects.
 3. Downloads the `.pure` files and writes them to a local directory.
 4. Writes a `project-manifest.json` alongside each project's files, recording the project
@@ -326,7 +329,9 @@ extracted/
 ```
 
 This is a **data export** — it produces a self-contained snapshot of all Studio project
-sources with no engine-specific processing.
+sources with no engine-specific processing. Because the output format is the same
+regardless of backend, the engine-side harvester does not need to know which platform
+the projects came from.
 
 #### Engine-side: Harvester
 
@@ -346,7 +351,7 @@ emit-harvest place     --harvested-dir ./harvested/ --engine-root ./legend-engin
 
 | Component | Lives in | Depends on |
 |---|---|---|
-| Project Extractor | `legend-sdlc` | SDLC project structure, GitLab API client |
+| Project Extractor | `legend-sdlc` | SDLC project structure, backend abstraction, backend implementation |
 | Harvester | `legend-engine` | Engine grammar/compiler, `legend-engine-core-emit` |
 
 There is **no cross-repo dependency** between the two components. They communicate through the
@@ -411,18 +416,18 @@ Each extracted project directory contains a `project-manifest.json`:
 
 #### 8.4.1 `sdlc-extract` (SDLC-side)
 
-- Uses the SDLC project structure APIs to enumerate Studio projects on the GitLab instance.
-- For each project, uses the project structure to locate `.pure` files and read the
-  dependency configuration.
-- Downloads `.pure` file contents from each project's default branch.
-- Resolves dependencies by reading the project's dependency configuration and recursively
-  fetching dependent projects' files.
+- Loads the configured backend implementation (e.g., `GitLabProjectBackend`).
+- Uses the backend to enumerate all Studio projects.
+- For each project, uses the project structure and backend to locate `.pure` files and
+  resolve the dependency configuration.
+- Downloads `.pure` file contents.
+- Resolves dependencies by recursively fetching dependent projects' files.
 - Writes each project's files to a subdirectory under the output directory, along with a
   `project-manifest.json` recording metadata and dependency references.
-- **Caching**: Downloaded files are cached locally (keyed by project ID and commit SHA) to
-  avoid redundant GitLab API calls on re-runs.
-- **Rate limiting**: Respects the GitLab API rate limit headers (`RateLimit-Remaining`,
-  `Retry-After`). Uses configurable concurrency (default: 4 parallel project fetches).
+- **Caching**: Downloaded files are cached locally (keyed by project ID and revision) to
+  avoid redundant API calls on re-runs.
+- **Rate limiting**: Backend implementations handle platform-specific rate limiting.
+  Uses configurable concurrency (default: 4 parallel project fetches).
 - **Error handling**: Projects that fail to download are logged and skipped.
 
 #### 8.4.2 `classify` (Engine-side)
@@ -487,7 +492,8 @@ Each component has its own configuration file.
 **Extractor configuration** (`extractor-config.yaml`, used by `sdlc-extract`):
 
 ```yaml
-gitlab:
+backend:
+  type: gitlab                   # backend implementation to use
   url: https://gitlab.example.com
   token: ${GITLAB_TOKEN}
   concurrency: 4
