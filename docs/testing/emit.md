@@ -468,55 +468,42 @@ This phase covers both types of file generation:
 
 ## 6. JUnit Integration
 
-The primary way to use EMIT is via JUnit tests. A typical test looks like:
+The primary way to execute EMIT tests is via its custom JUnit 4 runner, `EMITJUnitRunner`. This runner auto-discovers EMIT models and dynamically generates a granular JUnit test tree for each one. This ensures that every file generation, model test, and service plan generation is reported as a distinct test case in the IDE or build server, without requiring developers to write individual test methods by hand.
+
+### 6.1 Using the Custom Runner
+
+To run EMIT models in a module, create a single empty class annotated with the custom runner and a source configuration:
 
 ```java
-public class MyModelEMITTest
+@RunWith(EMITJUnitRunner.class)
+@EMITSource(paths = {"emit-models/"})
+public class MyModuleEMITTestSuite
 {
-    @Test
-    public void testMyModel()
-    {
-        EMITRunner runner = new EMITRunner();
-        EMITResult result = runner.runFromDirectory(
-            Paths.get("src/test/resources/emit-models/my-model")
-        );
-        assertTrue(result.isSuccess(), result.getSummary());
-    }
+    // The runner handles discovery and execution; no methods are needed.
 }
 ```
 
-### 6.1 Parameterized Tests & Auto-Discovery
+### 6.2 Granular Test Discovery
 
-The recommended way to test models is to use the framework's auto-discovery mechanism, which scans the classpath (or a given source tree) for all `*.emit.yaml` descriptors:
+When the test class is initialized, the `EMITJUnitRunner` scans the specified paths for `*.emit.yaml` files. For each model discovered, it performs Phase 1 (Parse) and Phase 2 (Compile) upfront to inspect the model's contents. 
 
-```java
-@RunWith(Parameterized.class)
-public class EMITParameterizedTest
-{
-    @Parameterized.Parameters(name = "{0}")
-    public static Collection<Object[]> models() throws IOException
-    {
-        // Automatically discovers all *.emit.yaml files in the classpath/module
-        return EMITCatalogBuilder.discoverTests("emit-models/");
-    }
+It then builds a JUnit `Description` tree mirroring the pipeline:
 
-    private final String name;
-    private final EMITModelDescriptor descriptor;
-
-    public EMITParameterizedTest(String name, EMITModelDescriptor descriptor) 
-    {
-        this.name = name;
-        this.descriptor = descriptor;
-    }
-
-    @Test
-    public void testModel()
-    {
-        EMITResult result = new EMITRunner().run(descriptor);
-        assertTrue(result.isSuccess(), result.getSummary());
-    }
-}
 ```
+MyModuleEMITTestSuite
+ └── service-simple
+      ├── Initialization (Parse & Compile)
+      ├── Generation: MyAvroGenerationSpec
+      ├── Test: demo::PersonService / testSuite_1 / test_1
+      ├── Test: demo::PersonService / testSuite_1 / test_2
+      └── Plan: demo::PersonService
+```
+
+### 6.3 Execution Behavior
+
+During test execution, the runner executes the pre-compiled models through the remaining phases (Phases 3-6). Because each step is mapped to a standard JUnit `Description`, tools like IntelliJ IDEA or Maven Surefire will report granular pass/fail statuses, durations, and diffs (for test assertions) exactly as if they were written as hand-coded `@Test` methods.
+
+If a model fails the Initialization phase (e.g., a parsing error), the runner will report the `Initialization` test as a failure and skip the downstream generation, test, and plan nodes for that specific model.
 
 ---
 
