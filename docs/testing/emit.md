@@ -813,8 +813,11 @@ The EMIT module will depend on existing `legend-engine` modules:
 | `legend-engine-language-pure-grammar` | `PureGrammarParser` for parsing `.pure` files |
 | `legend-engine-language-pure-compiler` | `PureModel` construction / compilation |
 | `legend-engine-language-pure-dsl-generation` | `ModelGenerationExtension`, `ArtifactGenerationExtension` SPIs |
+| `legend-engine-external-shared` | `GenerationExtension` SPI |
 | `legend-engine-xt-artifact-generation-http-api` | `ArtifactGenerationFactory` |
 | `legend-engine-testable` | `TestableRunner` |
+| `legend-engine-test-runner-mapping` | `MappingTestRunner` (legacy Mapping tests) |
+| `legend-engine-test-runner-service` | `ServiceTestRunner` (legacy Service tests) |
 | `legend-engine-executionPlan-generation` | `PlanGenerator` (used internally by `ServicePlanGenerator`) |
 | `legend-engine-language-pure-dsl-service` | Service protocol model |
 | `legend-engine-language-pure-dsl-service-generation` | `ServicePlanGenerator` |
@@ -859,9 +862,7 @@ EMIT Result: FAILED
   are present, and feature tags come from the controlled vocabulary.
 - **Model diff testing**: Compare EMIT results between two model versions.
 - **Performance benchmarking**: Track phase durations over time.
-- **CI integration**: Report EMIT results as GitHub check annotations.
 - **Model coverage**: Track which model elements are exercised by tests.
-- **Multi-model composition**: Support dependency models (e.g., shared type definitions).
 - **Custom phase plugins**: Allow registering additional phases via SPI.
 - **Feature coverage matrix**: Auto-generate a matrix showing which features are covered by
   examples and which lack coverage, helping guide the creation of new examples.
