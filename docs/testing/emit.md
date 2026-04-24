@@ -337,10 +337,10 @@ public class EMITRunner
 ```java
 public class EMITResult
 {
-  public List<EMITPhaseResult> phaseResults;
+    public List<EMITPhaseResult> phaseResults;
 
-  public boolean isSuccess();          // true iff all phases passed
-  public EMITPhaseResult getPhase(EMITPhase phase);
+    public boolean isSuccess();          // true iff all phases passed
+    public EMITPhaseResult getPhase(EMITPhase phase);
 }
 ```
 
@@ -384,14 +384,16 @@ public class EMITPhaseResult
 
 ### 5.0 Initialization (Pre-Pipeline)
 
-- Parse the `*.emit.yaml` file to read the explicit source configuration.
-- Recursively discover `.pure` files under the specified `roots` (resolving paths relative to the directory containing the YAML file), applying any `excludes`.
+- Parse the `*.emit.yaml` file to read the explicit source configuration, which includes `roots` (the primary model) and optionally `dependencies`.
+- Recursively discover `.pure` files under the specified `roots`, applying any `excludes`.
+- Discover dependencies: If a dependency points to a directory, discover `.pure` files within it. If it points to another `*.emit.yaml` file, recursively read its configuration and discover its sources. All paths are resolved relative to the referencing YAML file.
+- **Scope Segmentation**: Maintain a distinction between files loaded from the primary model `roots` and those loaded from `dependencies`. Dependencies are only in scope for the Parsing and Compiling phases.
 - **Virtual Path Relativization**: Assign each discovered `.pure` file a virtual file path relative to the root directory it was found in.
-- **Clash Validation**: Assert that no two files from different roots resolve to the same virtual path. If a clash occurs, test initialization fails before any phases run.
+- **Clash Validation**: Assert that no two files resolve to the same virtual path. If a clash occurs, test initialization fails before any phases run.
 
 ### 5.1 Phase 1: Parse
 
-- Read each discovered file's content.
+- Read the content of each discovered file (from both the primary model and dependencies).
 - Call `PureGrammarParser.newInstance().parseModel(content)` for each file.
 - Combine the resulting `PureModelContextData` objects using the builder's `addPureModelContextData()`.
 - **Success criteria**: No grammar parse exceptions.
@@ -444,16 +446,15 @@ This phase covers both types of file generation, mirroring what `FileGenerationM
 
 ### 5.5 Phase 5: Test Execution
 
-- **Run Testable tests**: Find all `Testable` elements in the compiled `PureModel` (e.g., services, mappings, functions
-  with test suites). Use `TestableRunner.doTests(...)` to run them and collect `RunTestsResult`.
+- **Run Testable tests**: Find all `Testable` elements in the compiled `PureModel` (e.g., services, mappings, functions with test suites).
 - **Run Legacy Mapping tests**: Find `Mapping` elements with legacy `MappingTest` / `MappingTestSuite` elements.
-  Use the legacy `MappingTestRunner` to execute them, producing `RichMappingTestResult` objects.
 - **Run Legacy Service tests**: Find `Service` elements with legacy `ServiceTest` elements.
-  Use the legacy `ServiceTestRunner` to execute them, producing `RichServiceTestResult` objects.
+- **Dependency Exclusion**: Only execute tests for elements defined in the primary model `roots`. Any test defined in an element loaded via `dependencies` MUST be ignored.
+- Use `TestableRunner.doTests(...)`, the legacy `MappingTestRunner`, and the legacy `ServiceTestRunner` to execute the in-scope tests, producing their respective result objects.
 - This phase mirrors `legend-sdlc-test-maven-plugin`.
-- **Success criteria**: All tests (Testable and legacy) pass.
+- **Success criteria**: All in-scope tests (Testable and legacy) pass.
 - **Failure mode**: Failed/error `TestResult`, `RichMappingTestResult`, or `RichServiceTestResult` entries.
-- **Skipped if**: No test elements (Testable or legacy) exist.
+- **Skipped if**: No test elements (Testable or legacy) exist in the primary model.
 
 ### 5.6 Phase 6: Plan Generation
 
@@ -549,6 +550,9 @@ modelSources:
     - store/
     - mapping/
     - service/
+  dependencies:
+    - ../shared-types/            # Directory dependency
+    - ../core-api.emit.yaml       # Another EMIT model dependency
   excludes:
     - store/experimental/
     - mapping/**/*_draft.pure
@@ -665,15 +669,15 @@ public class EMITCatalogIndex
 ```java
 public class EMITModelDescriptor
 {
-  public String name;               // directory name
-  public String title;              // human-readable title
-  public String description;        // multi-line description
-  public List<String> features;     // feature tags
-  public List<String> stores;       // store types
-  public String complexity;         // basic / intermediate / advanced
-  public List<String> tags;         // free-form tags
-  public Path directory;            // path to model directory
-  public List<Path> pureFiles;      // resolved .pure file paths
+    public String name;               // directory name
+    public String title;              // human-readable title
+    public String description;        // multi-line description
+    public List<String> features;     // feature tags
+    public List<String> stores;       // store types
+    public String complexity;         // basic / intermediate / advanced
+    public List<String> tags;         // free-form tags
+    public Path directory;            // path to model directory
+    public List<Path> pureFiles;      // resolved .pure file paths
 }
 ```
 
@@ -726,6 +730,8 @@ description: |
 modelSources:
   roots:
     - service-simple/
+  dependencies:
+    - ../base-types.emit.yaml
 
 features:
   - class
