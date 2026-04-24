@@ -421,17 +421,13 @@ public class EMITPhaseResult
 
 ### 5.4 Phase 4: File Generation
 
-This phase covers both types of file generation, mirroring what `FileGenerationMojo` in
-`legend-sdlc-generation-file-maven-plugin` does in a single Maven execution:
+This phase covers both types of file generation:
 
 #### 5.4a Specification-Driven File Generations
 
 - Discover the `GenerationSpecification` element and iterate over its `fileGenerations` list.
-- For each `FileGenerationSpecification` referenced, use `FileGenerationFactory` to run the
-  corresponding `FileGenerator`.
-- Produces `GenerationOutput` per specification (e.g., Avro schemas, JSON Schemas, Protobuf
-  definitions).
-- This mirrors the first half of `FileGenerationMojo.execute()` (lines 135-158 in the SDLC plugin).
+- For each `FileGenerationSpecification` referenced, find the corresponding `GenerationExtension` SPI (loaded via `ServiceLoader`) matching the specification's type.
+- Execute the generation extension to produce a list of `GenerationOutput` (e.g., Avro schemas, JSON Schemas, Protobuf definitions).
 - **Skipped if**: No `GenerationSpecification` exists, or its `fileGenerations` list is empty.
 
 #### 5.4b Element-Driven Artifact Generations
@@ -440,7 +436,6 @@ This phase covers both types of file generation, mirroring what `FileGenerationM
   registered `ArtifactGenerationExtension` SPIs against every packageable element.
 - Each extension declares which elements it `canGenerate(element)` for, and produces artifacts
   for matching elements.
-- This mirrors the second half of `FileGenerationMojo.execute()` (lines 160-179 in the SDLC plugin).
 - **Skipped if**: No elements are candidates for any registered artifact generation extension.
 
 **Success criteria**: Both sub-phases complete without exceptions.
@@ -753,7 +748,7 @@ tags:
   - getting-started
 ```
 
-**`model.pure`**:
+**`model/model.pure`**:
 ```pure
 ###Pure
 Class demo::Person
