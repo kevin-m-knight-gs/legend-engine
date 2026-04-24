@@ -114,20 +114,25 @@ URL, branch).
 
 ### 5.1 Deduplication by Feature Fingerprint
 
-Group projects by their feature fingerprint. For each distinct fingerprint, we want at most
-one representative example.
+Group projects by their feature fingerprint. For each distinct fingerprint, we want a small
+number of representative examples — not hundreds of duplicates, but not necessarily just one.
 
-### 5.2 Candidate Ranking
+### 5.2 Candidate Ranking and Selection
 
 Within each fingerprint group, rank candidates by suitability as an EMIT test:
 
-1. **Smallest element count** — simpler is better for test examples.
+1. **Has tests** — projects with test suites are more valuable.
 2. **Fewest dependencies** — self-contained models are preferable.
-3. **Has tests** — projects with test suites are more valuable.
-4. **Clean package structure** — fewer deeply nested packages are easier to understand.
+3. **Clean package structure** — fewer deeply nested packages are easier to understand.
 
-The top-ranked candidate for each fingerprint is selected. The selection can be overridden
-manually via a curated allowlist/blocklist.
+For each fingerprint, select up to **one candidate per complexity tier** (basic, intermediate,
+advanced). Small, focused models are valuable as clear examples of a feature combination.
+But larger, more realistic models are also valuable — they exercise interactions between
+features, stress-test the engine pipeline at scale, and catch bugs that only appear in
+non-trivial models. A catalog with only trivial examples would miss an important class of
+regressions.
+
+The selection can be overridden manually via a curated allowlist/blocklist.
 
 ### 5.3 Coverage Gap Analysis
 
