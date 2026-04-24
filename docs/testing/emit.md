@@ -35,8 +35,7 @@ To support this, the EMIT framework should from the start:
 - Enforce a **structured directory layout** with machine-readable metadata per model.
 - Define a **tagging taxonomy** for features, stores, and complexity levels.
 - Build a **catalog index** that can be queried programmatically.
-- Full-text search and a web-based catalog browser are future work, but the metadata foundations
-  make them straightforward to add later.
+- More user friendly ways of searching or browsing the catalog are future work, but the metadata foundations make them straightforward to add later.
 
 ---
 
@@ -170,7 +169,7 @@ For the remainder of this document, we use the name **EMIT**.
                     │  a) GenerationExtension SPI         │
                     │     (FileGenerationSpecification)   │
                     │  b) ArtifactGenerationExtension SPI │
-                    │     (ArtifactGenerationFactory)     │
+                    │     (per-element artifact gen)      │
                     │  → generated files                  |
                     └──────────────┬──────────────────────┘
                                    │
@@ -370,7 +369,7 @@ public class EMITPhaseResult
     public PureModel compiledModel;                 // after COMPILE
     public PureModelContextData generatedModelData;                       // after MODEL_GENERATION
     public Map<FileGenerationSpecification, List<GenerationOutput>> fileGenerationOutputs; // after FILE_GENERATION (file generations)
-    public Map<ArtifactGenerationExtension, List<ArtifactGenerationResult>> artifactOutputs; // after FILE_GENERATION (artifact generations)
+    public Map<ArtifactGenerationExtension, List<Artifact>> artifactOutputs;                // after FILE_GENERATION (artifact generations)
     public RunTestsResult testResults;                                     // after TEST_EXECUTION (Testable)
     public List<RichMappingTestResult> legacyMappingTestResults;           // after TEST_EXECUTION (Legacy Mapping)
     public List<RichServiceTestResult> legacyServiceTestResults;           // after TEST_EXECUTION (Legacy Service)
@@ -414,8 +413,7 @@ public class EMITPhaseResult
   additional `PureModelContextData`.
 - Merge the generated data with the original data and re-compile to produce an enriched
   `PureModel`.
-- This mirrors what `legend-sdlc-generation-model-maven-plugin` /
-  `ModelGenerationFactory.newFactory(genSpec, pmcd, pureModel).generate()` does.
+- This is functionally equivalent to what the SDLC model generation Maven plugin does.
 - **Success criteria**: Generation completes without exceptions; re-compilation succeeds.
 - **Skipped if**: No `GenerationSpecification` elements exist in the model.
 
@@ -432,10 +430,9 @@ This phase covers both types of file generation:
 
 #### 5.4b Element-Driven Artifact Generations
 
-- Use `ArtifactGenerationFactory.newFactory(pureModel, pmcd, elements).generate()` to run all
-  registered `ArtifactGenerationExtension` SPIs against every packageable element.
-- Each extension declares which elements it `canGenerate(element)` for, and produces artifacts
-  for matching elements.
+- Load all registered `ArtifactGenerationExtension` SPIs via `ServiceLoader`.
+- For each packageable element, iterate over extensions and call `canGenerate(element)` to check applicability.
+- For applicable elements, call `extension.generate(element, pureModel, pmcd, clientVersion)` to produce a list of `Artifact` objects.
 - **Skipped if**: No elements are candidates for any registered artifact generation extension.
 
 **Success criteria**: Both sub-phases complete without exceptions.
@@ -447,7 +444,6 @@ This phase covers both types of file generation:
 - **Run Legacy Service tests**: Find `Service` elements with legacy `ServiceTest` elements.
 - **Dependency Exclusion**: Only execute tests for elements defined in the primary `model`. Any test defined in an element loaded via `dependencies` MUST be ignored.
 - Use `TestableRunner.doTests(...)`, the legacy `MappingTestRunner`, and the legacy `ServiceTestRunner` to execute the in-scope tests, producing their respective result objects.
-- This phase mirrors `legend-sdlc-test-maven-plugin`.
 - **Success criteria**: All in-scope tests (Testable and legacy) pass.
 - **Failure mode**: Failed/error `TestResult`, `RichMappingTestResult`, or `RichServiceTestResult` entries.
 - **Skipped if**: No test elements (Testable or legacy) exist in the primary model.
@@ -460,17 +456,34 @@ This phase covers both types of file generation:
 - This handles both `PureSingleExecution` (producing a `SingleExecutionPlan`) and
   `PureMultiExecution` (producing a `CompositeExecutionPlan`).
 - Collect and report the generated `ExecutionPlan` objects.
-- This mirrors `legend-sdlc-generation-service-execution-maven-plugin`.
 - **Success criteria**: Plan generation completes without exceptions for all services.
 - **Skipped if**: No `Service` elements exist.
 
 ---
 
-## 6. JUnit Integration
+## 6. Execution and Reporting
 
-To achieve granular pass/fail reporting without forcing developers to write individual tests by hand, EMIT leverages JUnit 4's built-in `Parameterized` runner. Rather than writing a custom `Runner` class, the framework provides a builder that discovers models, parses them upfront, and flattens their operations into discrete executable tasks.
+EMIT models can be executed both programmatically (standalone) and through JUnit.
 
-### 6.1 Parameterized Task Execution
+### 6.1 Standalone Execution
+
+The `EMITRunner` can be invoked directly to execute the full pipeline for a given model descriptor:
+
+```java
+EMITRunner runner = new EMITRunner();
+EMITResult result = runner.run(descriptor);
+
+if (!result.isSuccess())
+{
+    System.err.println(result.getSummary());
+}
+```
+
+This is useful for scripting, CI pipelines, or any context where JUnit is not the execution harness.
+
+### 6.2 JUnit Integration
+
+To achieve granular pass/fail reporting without forcing developers to write individual tests by hand, EMIT leverages JUnit 4's built-in `Parameterized` runner. The framework provides a builder that discovers models, parses them upfront, and flattens their operations into discrete executable tasks.
 
 To test EMIT models in a module, create a single parameterized test class:
 
@@ -503,8 +516,6 @@ public class MyModuleEMITTestSuite
 }
 ```
 
-### 6.2 Granular Task Discovery
-
 When JUnit invokes the `@Parameters` method, `EMITTestSuiteBuilder` scans for `*.emit.yaml` files. For each model, it performs Phase 1 (Parse) and Phase 2 (Compile). By inspecting the compiled model, it identifies every file generation specification, every test suite, and every service.
 
 It then returns an array of granular tasks. The `{0}` parameter binds to the `taskName`, yielding highly descriptive individual JUnit test cases:
@@ -515,11 +526,32 @@ It then returns an array of granular tasks. The `{0}` parameter binds to the `ta
 - `[service-simple] Test: demo::PersonService / testSuite_1 / test_2`
 - `[service-simple] Plan: demo::PersonService`
 
-### 6.3 Execution Behavior
-
-During test execution, JUnit calls the `executeTask()` method for each individual node. Because each task is a distinct JUnit parameter, IDEs and build servers (like Maven Surefire) will report granular pass/fail statuses, durations, and diffs natively.
+Because each task is a distinct JUnit parameter, IDEs and build servers (like Maven Surefire) will report granular pass/fail statuses, durations, and diffs natively.
 
 To optimize performance, the `PureModel` compiled during the discovery phase is cached and shared among all tasks belonging to the same model. If a model fails to parse or compile during discovery, `EMITTestSuiteBuilder` simply yields a single `Initialization` task that is guaranteed to fail upon execution, skipping discovery of downstream tasks.
+
+### 6.3 Result Model and Reporting
+
+Each phase captures:
+- **Success/failure status**
+- **Duration** (milliseconds)
+- **Exception** with full stack trace (on failure)
+- **Error message** with source location (for parse/compile failures)
+- **Phase-specific artifacts** (on success)
+
+The `EMITResult.getSummary()` method produces a human-readable report:
+
+```
+EMIT Result: FAILED
+  ✓ PARSE           (42ms)    — 3 files, 12 elements
+  ✓ COMPILE         (318ms)   — PureModel built successfully
+  ✓ MODEL_GENERATION(15ms)    — skipped (no GenerationSpecification)
+  ✓ FILE_GENERATION (87ms)    — 3 file generations, 4 artifact extensions
+  ✗ TEST_EXECUTION  (203ms)   — 1 of 3 tests failed
+      FAIL: demo::PersonService / testSuite_1 / test_1 / assert_1
+            Expected: [] Actual: [{"firstName":"John","lastName":"Doe"}]
+  — PLAN_GENERATION           — not run (prior phase failed)
+```
 
 ---
 
@@ -700,22 +732,6 @@ metadata by introspecting the parsed `PureModelContextData`:
 
 This lets the catalog stay accurate even if `emit.yaml` tags are incomplete.
 
-### 7.6 Integration with EMITRunner
-
-The `EMITRunner` is metadata-aware. When run from a directory containing `emit.yaml`, it reads
-the descriptor and:
-
-1. Reports the model's title and description in test output.
-2. Includes feature tags in the `EMITResult` for downstream reporting.
-
-```java
-EMITRunner runner = new EMITRunner();
-EMITResult result = runner.runFromDirectory(Paths.get("emit-models/service/service-with-tests"));
-
-System.out.println(result.getDescriptor().title);   // "Service with Test Suites"
-System.out.println(result.getDescriptor().features); // [service, service-test, class]
-```
-
 ---
 
 ## 8. Sample `.pure` Model Input
@@ -817,7 +833,6 @@ The EMIT module will depend on existing `legend-engine` modules:
 | `legend-engine-language-pure-compiler` | `PureModel` construction / compilation |
 | `legend-engine-language-pure-dsl-generation` | `ModelGenerationExtension`, `ArtifactGenerationExtension` SPIs |
 | `legend-engine-external-shared` | `GenerationExtension` SPI |
-| `legend-engine-xt-artifact-generation-http-api` | `ArtifactGenerationFactory` |
 | `legend-engine-testable` | `TestableRunner` |
 | `legend-engine-test-runner-mapping` | `MappingTestRunner` (legacy Mapping tests) |
 | `legend-engine-test-runner-service` | `ServiceTestRunner` (legacy Service tests) |
@@ -830,63 +845,27 @@ No dependency on `legend-sdlc` is required.
 
 ---
 
-## 10. Error Handling and Reporting
+## 10. Future Extensions
 
-Each phase captures:
-- **Success/failure status**
-- **Duration** (milliseconds)
-- **Exception** with full stack trace (on failure)
-- **Error message** with source location (for parse/compile failures)
-- **Phase-specific artifacts** (on success)
-
-The `EMITResult.getSummary()` method produces a human-readable report:
-
-```
-EMIT Result: FAILED
-  ✓ PARSE           (42ms)    — 3 files, 12 elements
-  ✓ COMPILE         (318ms)   — PureModel built successfully
-  ✓ MODEL_GENERATION(15ms)    — skipped (no GenerationSpecification)
-  ✓ FILE_GENERATION (87ms)    — 3 file generations, 4 artifact extensions
-  ✗ TEST_EXECUTION  (203ms)   — 1 of 3 tests failed
-      FAIL: demo::PersonService / testSuite_1 / test_1 / assert_1
-            Expected: [] Actual: [{"firstName":"John","lastName":"Doe"}]
-  — PLAN_GENERATION           — not run (prior phase failed)
-```
-
----
-
-## 11. Future Extensions
-
-- **Catalog web UI**: A static site or lightweight server that renders the catalog index as a
-  searchable, browsable documentation site (e.g., auto-generated from the index JSON).
-- **CLI search tool**: `emit search --feature relational-mapping --complexity basic`.
+- **Catalog search tool**: A web UI or CLI tool for searching and browsing the catalog index
+  (e.g., `emit search --feature relational-mapping --complexity basic`).
 - **Auto-derived metadata**: Introspect `PureModelContextData` to supplement `emit.yaml` tags.
 - **Catalog completeness CI check**: Validate that every model has `emit.yaml`, required fields
   are present, and feature tags come from the controlled vocabulary.
 - **Model diff testing**: Compare EMIT results between two model versions.
 - **Performance benchmarking**: Track phase durations over time.
 - **Model coverage**: Track which model elements are exercised by tests.
-- **Custom phase plugins**: Allow registering additional phases via SPI.
 - **Feature coverage matrix**: Auto-generate a matrix showing which features are covered by
   examples and which lack coverage, helping guide the creation of new examples.
 
 ---
 
-## 12. Implementation Roadmap
+## 11. Implementation Roadmap
 
-| Step | Description | Estimated Effort |
-|---|---|---|
-| 1 | Create Maven module `legend-engine-core-emit` with POM and dependencies | Small |
-| 2 | Define `emit.yaml` schema and implement `EMITModelDescriptor` (YAML parsing via SnakeYAML or Jackson YAML) | Small |
-| 3 | Implement `EMITModelLoader` (file reading, YAML parsing, `.pure` file discovery) | Small |
-| 4 | Implement `EMITResult`, `EMITPhase`, `EMITPhaseResult` models | Small |
-| 5 | Implement `EMITRunner` — Phase 1 (Parse) and Phase 2 (Compile), with `emit.yaml` awareness | Medium |
-| 6 | Implement Phase 3 (Model Generation) | Medium |
-| 7 | Implement Phase 4 (Artifact Generation) | Medium |
-| 8 | Implement Phase 5 (Test Execution) | Medium |
-| 9 | Implement Phase 6 (Plan Generation) | Medium |
-| 10 | Implement `EMITCatalogIndex` and `EMITCatalogBuilder` (scan + in-memory query) | Medium |
-| 11 | Write initial catalog of example `.pure` models with `emit.yaml` metadata (5-10 examples covering basic → advanced) | Medium |
-| 12 | Write self-tests: `TestEMITRunner` (pipeline) and `TestEMITCatalog` (indexing/search) | Medium |
-| 13 | Documentation and integration guide | Small |
-| 14 | *(Future)* Catalog web UI / CLI search tool | Large |
+| Milestone | Description |
+|---|---|
+| 1 | Create the `legend-engine-core-emit` module. Implement the core data model (`EMITResult`, `EMITPhase`, `EMITPhaseResult`), `emit.yaml` parsing (`EMITModelDescriptor`), and file loading (`EMITModelLoader`). |
+| 2 | Implement `EMITRunner` with all six pipeline phases (Parse, Compile, Model Generation, Artifact Generation, Test Execution, Plan Generation). |
+| 3 | Implement `EMITTestSuiteBuilder` for JUnit integration and granular task discovery. |
+| 4 | Implement `EMITCatalogIndex` and `EMITCatalogBuilder`. Write an initial catalog of 5-10 example models with `emit.yaml` metadata. |
+| 5 | *(Future)* Catalog web UI / CLI search tool. |
