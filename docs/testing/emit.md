@@ -385,10 +385,11 @@ public class EMITPhaseResult
 ### 5.0 Initialization (Pre-Pipeline)
 
 - Parse the `*.emit.yaml` file to read the explicit source configuration, which includes `model` (the primary model files) and optionally `dependencies`.
-- `model`: A list of `.pure` file resource paths.
-- `dependencies`: Can be specified either as explicit `.pure` file resource paths or as other `*.emit.yaml` file resource paths. For `*.emit.yaml` dependencies, specific resources may be excluded via an `excludes` list that supports `*` and `**` wildcards.
-- **Scope Segmentation**: Maintain a distinction between files loaded from the primary `model` list and those loaded via `dependencies`. Dependencies are not in scope for generations, tests, etc.
-- **Virtual Path Relativization**: Use the classpath resource path as the virtual file path for each discovered `.pure` file.
+- `model`: Specified using a `root` directory and a list of `files`, which are resolved relative to the root.
+- `dependencies`: Each dependency can be specified in one of two ways:
+  - An `*.emit.yaml` file path (using `source`) with an optional `excludes` list supporting `*` and `**` wildcards.
+  - A `root` directory and a list of `files`, exactly like the `model` specification.
+- **Scope Segmentation**: Maintain a distinction between files loaded from the primary `model` and those loaded via `dependencies`. Dependencies are not in scope for generations, tests, etc.
 - **Clash Validation**: Assert that no two files resolve to the same virtual path. If a clash occurs, test initialization fails before any phases run.
 
 ### 5.1 Phase 1: Parse
@@ -542,18 +543,22 @@ description: |
   Relational-to-H2 connection, including test data, test suites,
   and an Avro file generation specification.
 
-# Explicit source configuration. Model files must be specified strictly
-# as explicit classpath resources. Dependencies are also specified as
-# resources, either as explicit .pure files or as other .emit.yaml files.
-# For .emit.yaml dependencies, specific resources can be excluded using wildcards.
+# Explicit source configuration. The primary model is specified with a root
+# directory and an explicit list of files relative to that root.
+# Dependencies can be specified either as another emit.yaml file with exclusions
+# or as a root and list of files similar to the primary model.
 modelSources:
   model:
-    - emit-models/complex/service-relational-with-generation/model.pure
-    - emit-models/complex/service-relational-with-generation/store.pure
-    - emit-models/complex/service-relational-with-generation/mapping.pure
-    - emit-models/complex/service-relational-with-generation/service.pure
+    root: emit-models/complex/service-relational-with-generation
+    files:
+      - model/types.pure
+      - store/db.pure
+      - mapping/mapping.pure
+      - service/myService.pure
   dependencies:
-    - emit-models/shared-types/common.pure
+    - root: emit-models/shared-types
+      files:
+        - model/common.pure
     - source: emit-models/core-api.emit.yaml
       excludes:
         - emit-models/core-api/**/*_experimental.pure
@@ -730,9 +735,11 @@ description: |
 
 modelSources:
   model:
-    - emit-models/basic/service-simple/model.pure
+    root: emit-models/basic/service-simple
+    files:
+      - model/model.pure
   dependencies:
-    - emit-models/basic/base-types.emit.yaml
+    - source: emit-models/basic/base-types.emit.yaml
 
 features:
   - class
