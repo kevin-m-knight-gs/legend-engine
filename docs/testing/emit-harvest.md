@@ -264,79 +264,114 @@ next, making the pipeline resumable and debuggable.
 
 ### 8.1 CLI Interface
 
+The pipeline is split across two separate tools:
+
+**Project Extractor** (in `legend-sdlc`):
 ```
-emit-harvest discover --gitlab-url <URL> --token <TOKEN> --output manifest.json
-emit-harvest classify --manifest manifest.json --output classified.json
-emit-harvest select  --classified classified.json --output selected.json [--overrides overrides.yaml]
-emit-harvest translate --selected selected.json --output-dir ./harvested/
-emit-harvest place   --harvested-dir ./harvested/ --engine-root ./legend-engine/
+sdlc-extract --gitlab-url <URL> --token <TOKEN> --output-dir ./extracted/
+```
+
+**Harvester** (in `legend-engine`):
+```
+emit-harvest classify  --extracted-dir ./extracted/ --output classified.json
+emit-harvest select    --classified classified.json --output selected.json [--overrides overrides.yaml]
+emit-harvest translate --selected selected.json --extracted-dir ./extracted/ --output-dir ./harvested/
+emit-harvest place     --harvested-dir ./harvested/ --engine-root ./legend-engine/
 ```
 
 ### 8.2 Architecture
 
-The harvester needs both `legend-engine` APIs (grammar parsing, compilation, EMIT validation)
-and `legend-sdlc` project structure knowledge (file layout conventions, dependency resolution).
-Project structure is complex and should not be re-implemented. There are two options for where
-the tool lives.
+The harvester needs both `legend-sdlc` project structure knowledge (to locate `.pure` files
+and resolve dependencies) and `legend-engine` APIs (to parse, compile, classify, and
+translate models). Placing the entire tool in either repository creates problems:
+placing it in `legend-engine` with a dependency on `legend-sdlc` creates a pseudo-circular
+version dependency (engine vN → sdlc vM → engine vN-1); placing it entirely in `legend-sdlc`
+puts the tool far from the EMIT framework it serves.
 
-#### Option A: Harvester in `legend-sdlc`
+The solution is to **split the tool at the natural boundary**: the `discover` stage is the
+only part that needs SDLC project structure knowledge. Everything after it operates on `.pure`
+files and `PureModelContextData`, which are engine-native concepts.
 
-The tool lives in a new module within `legend-sdlc` (e.g., `legend-sdlc-emit-harvest`). It
-depends on `legend-engine` modules for parsing, compilation, and EMIT validation, and on
-existing SDLC modules for project structure.
+#### SDLC-side: Project Extractor
 
-- **Pro**: Direct access to all project structure logic — file layout, dependency
-  configuration, entity discovery — without any extraction work.
-- **Con**: Creates a dependency from `legend-sdlc` → `legend-engine-core-emit`. This is not
-  circular (SDLC already depends on Engine), but it couples an SDLC module to the EMIT
-  framework whose output lives in `legend-engine`.
-- **Con**: The harvester's purpose and output serve `legend-engine`, so its home in
-  `legend-sdlc` is somewhat unintuitive.
+A lightweight tool in `legend-sdlc` (e.g., `legend-sdlc-project-extractor`) that reads
+Studio projects from GitLab and exports their `.pure` files into a portable directory
+structure. It depends only on existing SDLC modules — no `legend-engine` dependency required.
 
-#### Option B: Extract project structure, harvester in `legend-engine`
+```
+sdlc-extract --gitlab-url <URL> --token <TOKEN> --output-dir ./extracted/
+```
 
-First, extract project structure knowledge from `legend-sdlc-server` into a lightweight,
-standalone module (e.g., `legend-sdlc-project-structure`). Then place the harvester in
-`legend-engine` (e.g., `legend-engine-core-emit-harvest`), depending on:
-- The lightweight project structure module (from `legend-sdlc`)
-- `legend-engine` grammar, compiler, and EMIT modules
-- A GitLab API client (e.g., `gitlab4j-api`)
+For each Studio project, it:
+1. Uses the SDLC project structure to locate the project's `.pure` files.
+2. Resolves declared dependencies to other Studio projects.
+3. Downloads the `.pure` files and writes them to a local directory.
+4. Writes a `project-manifest.json` alongside each project's files, recording the project
+   ID, URL, branch, and dependency references.
 
-- **Pro**: The harvester lives near the EMIT framework and catalog it serves.
-- **Pro**: The extracted project structure module is independently useful — it enables
-  alternative SDLC backends and other tools that need to understand project layout without
-  pulling in the full server.
-- **Con**: Requires the project structure extraction to happen first.
+The output is a directory tree:
+```
+extracted/
+  project-1234/
+    project-manifest.json
+    src/
+      model/types.pure
+      store/db.pure
+      ...
+  project-5678/
+    project-manifest.json
+    src/
+      model/common.pure
+      ...
+```
 
-#### Common Dependencies
+This is a **data export** — it produces a self-contained snapshot of all Studio project
+sources with no engine-specific processing.
 
-Regardless of which option is chosen, the tool depends on:
-- `legend-engine-language-pure-grammar` — for `PureGrammarParser` and `PureGrammarComposer`
-- `legend-engine-language-pure-compiler` — for `PureModel` compilation
-- `legend-engine-protocol-pure` — for `PureModelContextData` and protocol models
-- `legend-engine-core-emit` — for `EMITRunner` (used in the validation step)
-- SDLC project structure logic (either directly or via the extracted module)
-- A GitLab API client (e.g., `gitlab4j-api`)
+#### Engine-side: Harvester
+
+The harvester itself lives in `legend-engine` (e.g., `legend-engine-core-emit-harvest`).
+It consumes the extracted directory and runs all remaining stages: classify, select,
+translate, and place. It depends only on `legend-engine` modules — no `legend-sdlc`
+dependency required.
+
+```
+emit-harvest classify  --extracted-dir ./extracted/ --output classified.json
+emit-harvest select    --classified classified.json --output selected.json
+emit-harvest translate --selected selected.json --extracted-dir ./extracted/ --output-dir ./harvested/
+emit-harvest place     --harvested-dir ./harvested/ --engine-root ./legend-engine/
+```
+
+#### Dependency Summary
+
+| Component | Lives in | Depends on |
+|---|---|---|
+| Project Extractor | `legend-sdlc` | SDLC project structure, GitLab API client |
+| Harvester | `legend-engine` | Engine grammar/compiler, `legend-engine-core-emit` |
+
+There is **no cross-repo dependency** between the two components. They communicate through the
+extracted directory, which is a plain filesystem format (`.pure` files + JSON manifests).
 
 ### 8.3 Intermediate Data Formats
 
 Each stage produces a JSON file that serves as input to the next stage. This makes it
 possible to inspect, edit, or re-run any stage independently.
 
-#### Manifest (`discover` → `classify`)
+#### Project Manifest (`sdlc-extract` output, per project)
+
+Each extracted project directory contains a `project-manifest.json`:
 
 ```json
-[
-  {
-    "projectId": 1234,
-    "projectUrl": "https://gitlab.example.com/group/project",
-    "branch": "master",
-    "elementCount": 47,
-    "compilationTimeMs": 820,
-    "dependencyProjectIds": [5678, 9012],
-    "pureFiles": ["model/types.pure", "store/db.pure", "..."]
-  }
-]
+{
+  "projectId": 1234,
+  "projectUrl": "https://gitlab.example.com/group/project",
+  "branch": "master",
+  "pureFiles": ["model/types.pure", "store/db.pure", "mapping/mapping.pure"],
+  "dependencies": [
+    { "projectId": 5678, "version": "1.2.0" },
+    { "projectId": 9012, "version": "3.0.1" }
+  ]
+}
 ```
 
 #### Classified (`classify` → `select`)
@@ -374,35 +409,34 @@ possible to inspect, edit, or re-run any stage independently.
 
 ### 8.4 Stage Details
 
-#### 8.4.1 `discover`
+#### 8.4.1 `sdlc-extract` (SDLC-side)
 
-- Uses the GitLab Projects API (`GET /api/v4/projects`) with pagination to enumerate projects.
-  Filters by group or topic if the instance uses them to identify Studio projects.
-- For each candidate project, uses the Repository Tree API (`GET /api/v4/projects/:id/repository/tree`)
-  to check for `.pure` files.
-- Downloads `.pure` file contents via the Repository Files API
-  (`GET /api/v4/projects/:id/repository/files/:path/raw`).
-- Parses each file with `PureGrammarParser` and merges into a `PureModelContextData`.
+- Uses the SDLC project structure APIs to enumerate Studio projects on the GitLab instance.
+- For each project, uses the project structure to locate `.pure` files and read the
+  dependency configuration.
+- Downloads `.pure` file contents from each project's default branch.
 - Resolves dependencies by reading the project's dependency configuration and recursively
   fetching dependent projects' files.
-- Attempts compilation. Records success/failure, element count, and timing.
+- Writes each project's files to a subdirectory under the output directory, along with a
+  `project-manifest.json` recording metadata and dependency references.
 - **Caching**: Downloaded files are cached locally (keyed by project ID and commit SHA) to
   avoid redundant GitLab API calls on re-runs.
 - **Rate limiting**: Respects the GitLab API rate limit headers (`RateLimit-Remaining`,
   `Retry-After`). Uses configurable concurrency (default: 4 parallel project fetches).
-- **Error handling**: Projects that fail to download or parse are logged and skipped. The
-  manifest includes only successfully compiled projects.
+- **Error handling**: Projects that fail to download are logged and skipped.
 
-#### 8.4.2 `classify`
+#### 8.4.2 `classify` (Engine-side)
 
-- Reads the manifest and, for each project, inspects the cached `PureModelContextData`.
+- Reads the extracted directory. For each project subdirectory, parses the `.pure` files
+  into `PureModelContextData` using `PureGrammarParser`.
+- Attempts compilation. Projects that fail to compile are logged and excluded.
 - Computes the feature fingerprint by examining element `classifierPath` values, mapping
   types, connection types, and the presence of test suites and generation specifications.
 - Computes the complexity score from element count, dependency depth, feature tag count,
   and presence of advanced features.
 - Writes the classified output.
 
-#### 8.4.3 `select`
+#### 8.4.3 `select` (Engine-side)
 
 - Groups classified projects by fingerprint.
 - Within each group, ranks by the criteria in §5.2 and selects up to one candidate per
@@ -420,9 +454,9 @@ possible to inspect, edit, or re-run any stage independently.
 - Reports coverage gaps: feature tags or combinations present in the taxonomy but absent
   from the selected set.
 
-#### 8.4.4 `translate`
+#### 8.4.4 `translate` (Engine-side)
 
-- For each selected project, reads the cached `.pure` files and their dependency files.
+- For each selected project, reads the extracted `.pure` files and their dependency files.
 - Parses all files into a combined `PureModelContextData`.
 - Applies package simplification (§6.2):
   - Computes the longest common package prefix.
@@ -437,7 +471,7 @@ possible to inspect, edit, or re-run any stage independently.
 - Runs the full EMIT pipeline on the result to validate (§6.5). Failures are logged.
 - Writes the translated files to the output directory, one subdirectory per model.
 
-#### 8.4.5 `place`
+#### 8.4.5 `place` (Engine-side)
 
 - For each translated model in the output directory, determines the target `legend-engine`
   module based on the feature fingerprint (§7.1).
@@ -448,19 +482,25 @@ possible to inspect, edit, or re-run any stage independently.
 
 ### 8.5 Configuration
 
-A top-level `harvest-config.yaml` file controls global settings:
+Each component has its own configuration file.
+
+**Extractor configuration** (`extractor-config.yaml`, used by `sdlc-extract`):
 
 ```yaml
 gitlab:
   url: https://gitlab.example.com
-  token: ${GITLAB_TOKEN}         # environment variable reference
+  token: ${GITLAB_TOKEN}
   concurrency: 4
   groups:                        # optional: restrict scan to specific groups
     - legend-projects
 
 cache:
-  directory: ./.emit-harvest-cache
+  directory: ./.sdlc-extract-cache
+```
 
+**Harvester configuration** (`harvest-config.yaml`, used by `emit-harvest`):
+
+```yaml
 simplification:
   defaultPrefix: demo
   renames:                       # optional: global element rename rules
