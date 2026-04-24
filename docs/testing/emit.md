@@ -384,9 +384,9 @@ public class EMITPhaseResult
 
 ### 5.0 Initialization (Pre-Pipeline)
 
-- Parse the `*.emit.yaml` file to read the explicit source configuration, which includes `roots` (the primary model) and optionally `dependencies`.
-- Recursively discover `.pure` files under the specified `roots`, applying any `excludes`.
-- Discover dependencies: If a dependency points to a directory, discover `.pure` files within it. If it points to another `*.emit.yaml` file, recursively read its configuration and discover its sources. All paths are resolved relative to the referencing YAML file.
+- Parse the `*.emit.yaml` file to read the explicit source configuration, which includes `roots` (the primary model) and optionally `dependencies`. Sources can be specified as either file system paths (`path: ...`) or classpath resources (`resource: ...`).
+- Recursively discover `.pure` files under the specified `roots`, applying any `excludes`. File paths are resolved relative to the directory containing the YAML file; classpath resources are resolved via the classloader.
+- Discover dependencies: If a dependency points to a directory or resource package, discover `.pure` files within it. If it points to another `*.emit.yaml` file, recursively read its configuration and discover its sources.
 - **Scope Segmentation**: Maintain a distinction between files loaded from the primary model `roots` and those loaded from `dependencies`. Dependencies are only in scope for the Parsing and Compiling phases.
 - **Virtual Path Relativization**: Assign each discovered `.pure` file a virtual file path relative to the root directory it was found in.
 - **Clash Validation**: Assert that no two files resolve to the same virtual path. If a clash occurs, test initialization fails before any phases run.
@@ -542,17 +542,19 @@ description: |
   Relational-to-H2 connection, including test data, test suites,
   and an Avro file generation specification.
 
-# Explicit source configuration. Paths are resolved relative to
-# the directory containing this YAML file.
+# Explicit source configuration. You can specify sources as file
+# system paths or as classpath resources. File paths are resolved
+# relative to the directory containing this YAML file.
 modelSources:
   roots:
-    - model/
-    - store/
-    - mapping/
-    - service/
+    - path: model/
+    - path: store/
+    - path: mapping/
+    - path: service/
   dependencies:
-    - ../shared-types/            # Directory dependency
-    - ../core-api.emit.yaml       # Another EMIT model dependency
+    - path: ../shared-types/            # Directory dependency
+    - path: ../core-api.emit.yaml       # Another EMIT model dependency
+    - resource: org/finos/legend/api/   # Classpath resource dependency
   excludes:
     - store/experimental/
     - mapping/**/*_draft.pure
@@ -729,9 +731,9 @@ description: |
 
 modelSources:
   roots:
-    - service-simple/
+    - path: service-simple/
   dependencies:
-    - ../base-types.emit.yaml
+    - path: ../base-types.emit.yaml
 
 features:
   - class
