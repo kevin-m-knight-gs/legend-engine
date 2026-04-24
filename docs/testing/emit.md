@@ -363,17 +363,8 @@ public class EMITPhaseResult
     public long durationMs;
     public String errorMessage;         // null if success
     public Exception exception;         // null if success
-
-    // Phase-specific data (populated on success)
-    public PureModelContextData parsedData;         // after PARSE
-    public PureModel compiledModel;                 // after COMPILE
-    public PureModelContextData generatedModelData;                       // after MODEL_GENERATION
-    public Map<FileGenerationSpecification, List<GenerationOutput>> fileGenerationOutputs; // after FILE_GENERATION (file generations)
-    public Map<ArtifactGenerationExtension, List<Artifact>> artifactOutputs;                // after FILE_GENERATION (artifact generations)
-    public RunTestsResult testResults;                                     // after TEST_EXECUTION (Testable)
-    public List<RichMappingTestResult> legacyMappingTestResults;           // after TEST_EXECUTION (Legacy Mapping)
-    public List<RichServiceTestResult> legacyServiceTestResults;           // after TEST_EXECUTION (Legacy Service)
-    public List<ExecutionPlan> plans;                                      // after PLAN_GENERATION
+    // Phase-specific output data is also available (e.g., PureModelContextData,
+    // PureModel, GenerationOutput, test results, ExecutionPlan objects).
 }
 ```
 
@@ -670,67 +661,11 @@ emit-models/
 This hierarchy aids browsing, but the primary discovery mechanism is the metadata index,
 not the directory tree.
 
-### 7.4 Catalog Index (`EMITCatalogIndex`)
+### 7.4 Catalog Index
 
-A Java API for building and querying the catalog at test time:
+The `EMITCatalogBuilder` scans classpath roots for `*.emit.yaml` files and builds an in-memory `EMITCatalogIndex`. The index supports querying models by feature, store type, complexity, and free-text search over titles, descriptions, and tags. The `EMITModelDescriptor` captures all fields from the `emit.yaml` file plus the resolved file paths.
 
-```java
-public class EMITCatalogIndex
-{
-    /**
-     * Scan a root directory, read all emit.yaml files, and build the index.
-     */
-    public static EMITCatalogIndex build(Path rootDirectory);
-
-    /** All model descriptors in the catalog. */
-    public List<EMITModelDescriptor> allModels();
-
-    /** Find models that exercise a specific feature. */
-    public List<EMITModelDescriptor> byFeature(String feature);
-
-    /** Find models matching a set of features (AND). */
-    public List<EMITModelDescriptor> byFeatures(Set<String> features);
-
-    /** Find models by complexity level. */
-    public List<EMITModelDescriptor> byComplexity(String complexity);
-
-    /** Find models by store type. */
-    public List<EMITModelDescriptor> byStore(String store);
-
-    /** Find models matching a free-text query against title, description, and tags. */
-    public List<EMITModelDescriptor> search(String query);
-}
-```
-
-```java
-public class EMITModelDescriptor
-{
-    public String name;               // directory name
-    public String title;              // human-readable title
-    public String description;        // multi-line description
-    public List<String> features;     // feature tags
-    public List<String> stores;       // store types
-    public String complexity;         // basic / intermediate / advanced
-    public List<String> tags;         // free-form tags
-    public Path directory;            // path to model directory
-    public List<Path> pureFiles;      // resolved .pure file paths
-}
-```
-
-The `EMITCatalogIndex` is designed so that a future web UI or CLI search tool can simply
-serialize the index to JSON and provide a search interface over it.
-
-### 7.5 Auto-Derived Metadata (Future Enhancement)
-
-In later stages, the framework can supplement the hand-written `emit.yaml` with auto-derived
-metadata by introspecting the parsed `PureModelContextData`:
-
-- **Element types present** (classes, enumerations, services, mappings, etc.)
-- **Store types used** (from connection and runtime definitions)
-- **Whether tests are defined** (presence of `testSuites` on services, functions, etc.)
-- **Whether generations are defined** (presence of `GenerationSpecification`)
-
-This lets the catalog stay accurate even if `emit.yaml` tags are incomplete.
+The index is designed so that a future search tool can simply serialize it to JSON and provide a search interface over it.
 
 ---
 
