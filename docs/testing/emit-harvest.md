@@ -14,10 +14,8 @@ This is more efficient and produces tests grounded in real usage patterns.
 However, harvesting at scale introduces challenges:
 - **Redundancy**: Many projects use the same feature combinations. We don't need 200 tests for
   "simple service with relational mapping" — we need the best one.
-- **Complexity**: Production projects are often large and entangled. A good EMIT test should be
-  small, focused, and self-contained.
-- **Simplification**: Studio projects often have large, organization-specific models. EMIT tests
-  should be small, focused, and use generic naming.
+- **Simplification**: Production projects are large, entangled, and use organization-specific
+  naming. EMIT tests should be small, focused, self-contained, and use generic naming.
 - **Placement**: Each harvested test must land in the right `legend-engine` module, near the
   feature code it exercises.
 
@@ -50,20 +48,12 @@ better examples.
 
 ## 3. Stage 1: Discover
 
-### 3.1 Scanning for Studio Projects
-
 Use the backend abstraction (see §8.2) to enumerate all Studio projects on the hosting
-platform. For each project, determine whether it contains `.pure` files in Legend grammar.
-
-### 3.2 Model Extraction
-
-For each identified Studio project, extract the `.pure` files from the default branch.
+platform. For each identified project, extract the `.pure` files from the default branch.
 Studio projects store their models as `.pure` files written in Legend Engine Grammar — the
-same grammar format used by EMIT tests.
-
-If the project has declared dependencies (other versioned Studio projects), resolve those
-transitively and download the dependency files as well, keeping the primary model files
-separate from dependency files.
+same grammar format used by EMIT tests. If the project has declared dependencies (other
+versioned Studio projects), resolve those transitively and download the dependency files
+as well, keeping the primary model files separate from dependency files.
 
 This stage is implemented by the SDLC-side project extractor (see §8.2). Its output is a
 portable directory of `.pure` files and project manifests, which is consumed by the
@@ -139,27 +129,22 @@ Report any feature tags or tag combinations that have no representation — thes
 
 ## 6. Stage 4: Translate
 
-### 6.1 File Restructuring
+### 6.1 Restructuring and Simplification
 
 Since Studio projects already store models as `.pure` files in Legend grammar — the same
 format used by EMIT — no grammar conversion is needed. However, the source files must be
-restructured to match EMIT directory conventions.
+restructured and simplified:
 
-Studio projects may organize files differently than the EMIT convention (model, store, mapping,
-service, etc. subdirectories). The translation stage reads the source `.pure` files, parses
-them, and re-emits them into the EMIT directory structure — splitting or merging files as
-needed to produce one file per concern.
+- **Directory layout**: Studio projects may organize files differently than the EMIT
+  convention (model, store, mapping, service, etc. subdirectories). Files are split or
+  merged to produce one file per concern.
+- **Package simplification**: Production projects often use organization-specific package
+  hierarchies (e.g., `com::acme::finance::trading::model::Position`). These are replaced
+  with a short, generic prefix (e.g., `demo::Position`).
 
-### 6.2 Package Simplification
-
-Production Studio projects often use organization-specific package hierarchies (e.g.,
-`com::acme::finance::trading::model::Position`). For EMIT test clarity, these should be
-simplified to a short, generic namespace (e.g., `demo::Position`).
-
-Package simplification must be applied **jointly** across the primary model and all of its
-dependencies. The primary model may reference types defined in a dependency (e.g., a mapping
-in the primary model maps to a class defined in a shared types dependency). If the primary
-model's packages are simplified but the dependency's are not, the cross-references break.
+Both transformations are applied **jointly** across the primary model and all of its
+dependencies. If the primary model's packages are simplified but a dependency's are not,
+cross-references break.
 
 The transformation works as follows:
 1. Parse all `.pure` files — from the primary model and all dependencies — into a combined
@@ -168,9 +153,10 @@ The transformation works as follows:
 3. Replace it with a short prefix (e.g., `demo`).
 4. Update all cross-references (mapping source/target paths, service query references, etc.).
 5. Re-emit the modified `PureModelContextData` to `.pure` files using `PureGrammarComposer`,
-   partitioning the output back into primary model files and dependency files.
+   splitting output by element type and partitioning back into primary model files and
+   dependency files.
 
-### 6.3 Element Renaming
+### 6.2 Element Renaming
 
 Beyond package simplification, element names that are overly specific to the source organization
 (e.g., `AcmeTradingService_v2_PROD`) should be renamed to generic, descriptive names
@@ -178,7 +164,7 @@ Beyond package simplification, element names that are overly specific to the sou
 across the primary model and dependencies. This step may require manual review for non-trivial
 cases.
 
-### 6.4 Dependency Handling
+### 6.3 Dependency Handling
 
 If the selected project has dependencies on other Studio projects, there are two approaches:
 
@@ -195,7 +181,7 @@ any change to the shared model's naming affects all tests that depend on it. The
 tool should detect shared dependencies during the selection stage and process them as a
 group.
 
-### 6.5 Validation
+### 6.4 Validation
 
 After translation, run the full EMIT pipeline (parse → compile → generate → test → plan) on
 the translated model — including its simplified dependencies — to verify that the
@@ -257,22 +243,16 @@ The harvest process is implemented as a Java command-line tool. Each stage of th
 is a separate subcommand that reads input from the previous stage and writes output for the
 next, making the pipeline resumable and debuggable.
 
-### 8.1 CLI Interface
+### 8.1 Tool Split
 
 The pipeline is split across two separate tools:
 
-**Project Extractor** (in `legend-sdlc`):
-```
-sdlc-extract --config extractor-config.yaml --output-dir ./extracted/
-```
-
-**Harvester** (in `legend-engine`):
-```
-emit-harvest classify  --extracted-dir ./extracted/ --output classified.json
-emit-harvest select    --classified classified.json --output selected.json [--overrides overrides.yaml]
-emit-harvest translate --selected selected.json --extracted-dir ./extracted/ --output-dir ./harvested/
-emit-harvest place     --harvested-dir ./harvested/ --engine-root ./legend-engine/
-```
+- **Project Extractor** (in `legend-sdlc`): Scans the hosting platform for Studio projects
+  and exports their `.pure` files into a portable extracted directory. This is the only
+  component that requires SDLC project structure knowledge.
+- **Harvester** (in `legend-engine`): Consumes the extracted directory and runs all
+  remaining stages (classify, select, translate, place). It depends only on `legend-engine`
+  modules.
 
 ### 8.2 Architecture
 
