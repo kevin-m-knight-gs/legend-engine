@@ -468,42 +468,58 @@ This phase covers both types of file generation:
 
 ## 6. JUnit Integration
 
-The primary way to execute EMIT tests is via its custom JUnit 4 runner, `EMITJUnitRunner`. This runner auto-discovers EMIT models and dynamically generates a granular JUnit test tree for each one. This ensures that every file generation, model test, and service plan generation is reported as a distinct test case in the IDE or build server, without requiring developers to write individual test methods by hand.
+To achieve granular pass/fail reporting without forcing developers to write individual tests by hand, EMIT leverages JUnit 4's built-in `Parameterized` runner. Rather than writing a custom `Runner` class, the framework provides a builder that discovers models, parses them upfront, and flattens their operations into discrete executable tasks.
 
-### 6.1 Using the Custom Runner
+### 6.1 Parameterized Task Execution
 
-To run EMIT models in a module, create a single empty class annotated with the custom runner and a source configuration:
+To test EMIT models in a module, create a single parameterized test class:
 
 ```java
-@RunWith(EMITJUnitRunner.class)
-@EMITSource(paths = {"emit-models/"})
+@RunWith(Parameterized.class)
 public class MyModuleEMITTestSuite
 {
-    // The runner handles discovery and execution; no methods are needed.
+    @Parameterized.Parameters(name = "{0}")
+    public static Collection<Object[]> tasks()
+    {
+        // Discovers models, performs initial parse/compile, and returns a flattened 
+        // list of granular EMITTask objects for generation, testing, and plan creation.
+        return EMITTestSuiteBuilder.buildTasks("emit-models/");
+    }
+
+    private final String taskName;
+    private final EMITTask task;
+
+    public MyModuleEMITTestSuite(String taskName, EMITTask task) 
+    {
+        this.taskName = taskName;
+        this.task = task;
+    }
+
+    @Test
+    public void executeTask()
+    {
+        task.run();
+    }
 }
 ```
 
-### 6.2 Granular Test Discovery
+### 6.2 Granular Task Discovery
 
-When the test class is initialized, the `EMITJUnitRunner` scans the specified paths for `*.emit.yaml` files. For each model discovered, it performs Phase 1 (Parse) and Phase 2 (Compile) upfront to inspect the model's contents. 
+When JUnit invokes the `@Parameters` method, `EMITTestSuiteBuilder` scans for `*.emit.yaml` files. For each model, it performs Phase 1 (Parse) and Phase 2 (Compile). By inspecting the compiled model, it identifies every file generation specification, every test suite, and every service.
 
-It then builds a JUnit `Description` tree mirroring the pipeline:
+It then returns an array of granular tasks. The `{0}` parameter binds to the `taskName`, yielding highly descriptive individual JUnit test cases:
 
-```
-MyModuleEMITTestSuite
- └── service-simple
-      ├── Initialization (Parse & Compile)
-      ├── Generation: MyAvroGenerationSpec
-      ├── Test: demo::PersonService / testSuite_1 / test_1
-      ├── Test: demo::PersonService / testSuite_1 / test_2
-      └── Plan: demo::PersonService
-```
+- `[service-simple] Initialization (Parse & Compile)`
+- `[service-simple] Generation: MyAvroGenerationSpec`
+- `[service-simple] Test: demo::PersonService / testSuite_1 / test_1`
+- `[service-simple] Test: demo::PersonService / testSuite_1 / test_2`
+- `[service-simple] Plan: demo::PersonService`
 
 ### 6.3 Execution Behavior
 
-During test execution, the runner executes the pre-compiled models through the remaining phases (Phases 3-6). Because each step is mapped to a standard JUnit `Description`, tools like IntelliJ IDEA or Maven Surefire will report granular pass/fail statuses, durations, and diffs (for test assertions) exactly as if they were written as hand-coded `@Test` methods.
+During test execution, JUnit calls the `executeTask()` method for each individual node. Because each task is a distinct JUnit parameter, IDEs and build servers (like Maven Surefire) will report granular pass/fail statuses, durations, and diffs natively.
 
-If a model fails the Initialization phase (e.g., a parsing error), the runner will report the `Initialization` test as a failure and skip the downstream generation, test, and plan nodes for that specific model.
+To optimize performance, the `PureModel` compiled during the discovery phase is cached and shared among all tasks belonging to the same model. If a model fails to parse or compile during discovery, `EMITTestSuiteBuilder` simply yields a single `Initialization` task that is guaranteed to fail upon execution, skipping discovery of downstream tasks.
 
 ---
 
