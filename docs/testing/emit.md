@@ -83,7 +83,7 @@ For the remainder of this document, we use the name **EMIT**.
 |---|---|---|
 | **What is tested** | Individual Pure platform functions (e.g., `between`, `timeBucket`) | An entire Legend model, end-to-end |
 | **Input** | Pure function definitions, already part of the compiled core | `.pure` files in Legend grammar (user-authored models) |
-| **Scope** | Functional correctness of a single function across target runtimes (databases) | Full build pipeline: parse → compile → generate → test → plan. Optionally varies store implementations (e.g., DuckDB vs Snowflake for relational stores). |
+| **Scope** | Functional correctness of a single function across target runtimes (databases) | Full build pipeline: parse → compile → generate → test → plan. |
 | **Target runtimes** | Executes against multiple database adapters (DuckDB, Snowflake, etc.) | Engine-only; no external database targets required (though model tests may use them) |
 | **Test discovery** | Tests tagged with `@PCT` stereotypes in Pure code | Tests discovered from `Testable` elements (services, mappings, functions) in the input model |
 | **JUnit integration** | Custom `TestSuite` builders (`PureTestBuilderCompiled`) | JUnit 4/5 integration via a custom runner or parameterized test |
@@ -546,159 +546,12 @@ EMIT Result: FAILED
 
 ---
 
-## 7. Store Implementation Variation
-
-EMIT models that involve stores (relational, service store, etc.) should be testable against
-multiple implementations of those stores. For example, a model with a relational mapping should
-be runnable against DuckDB, Snowflake, DB2, and any other supported database — without
-duplicating the model itself.
-
-This is analogous to how PCT tests individual functions across database targets, but at the
-model level. The key difference is that the **store type is fixed by the model** (e.g., a
-relational store is always relational); only the **implementation** varies.
-
-### 7.1 Concept
-
-A store implementation variant specifies an alternative connection or runtime configuration
-that replaces the default one defined in the model. For a relational model, this typically
-means providing a different database connection (e.g., DuckDB instead of H2).
-
-The EMIT framework treats the model's `.pure` files as the base. Each store variant provides
-**overlay files** that replace or supplement specific source files (typically connection and
-runtime definitions). The pipeline runs in full for each variant: parse, compile, generate,
-test, and plan.
-
-### 7.2 Configuration
-
-Store variants are declared in the `emit.yaml` file using a `storeVariation` section:
-
-```yaml
-# relational-service.emit.yaml
-name: relational-service
-title: "Relational Service"
-
-modelSources:
-  model:
-    root: emit-models/relational-service
-    files:
-      - model/types.pure
-      - store/db.pure
-      - mapping/mapping.pure
-      - service/myService.pure
-      - connection/connection.pure     # default: H2 connection
-      - runtime/runtime.pure
-
-# Store implementation variation.
-# Each variant provides overlay files that replace files in the base model.
-storeVariation:
-  - name: duckdb
-    overlays:
-      - base: connection/connection.pure
-        replacement: variants/duckdb/connection.pure
-      - base: runtime/runtime.pure
-        replacement: variants/duckdb/runtime.pure
-  - name: snowflake
-    overlays:
-      - base: connection/connection.pure
-        replacement: variants/snowflake/connection.pure
-      - base: runtime/runtime.pure
-        replacement: variants/snowflake/runtime.pure
-
-features:
-  - relational-mapping
-  - service
-stores:
-  - relational
-complexity: intermediate
-```
-
-Overlay file paths are resolved relative to the same `root` as the base model.
-
-### 7.3 Execution Semantics
-
-When `storeVariation` is present, the EMIT pipeline executes as follows:
-
-1. **Base run**: The model is executed as-is with its default connection/runtime files.
-   This run uses whatever store implementation the model defines by default (e.g., H2).
-2. **Variant runs**: For each entry in `storeVariation`, the framework re-runs the full
-   pipeline with the overlay files substituted. A variant overlay specifies a `base` file
-   (from the model's `files` list) and a `replacement` file. During the parse phase, the
-   replacement file's content is loaded instead of the base file.
-
-Each variant run is independent — it produces its own `EMITResult` with per-phase
-pass/fail status.
-
-If a model has no `storeVariation` section, the pipeline runs exactly once with the base
-model (preserving backward compatibility).
-
-### 7.4 JUnit Integration
-
-Store variants expand the JUnit parameterized test matrix. Each task name includes the
-variant name as a qualifier:
-
-```
-[relational-service / base]     Initialization (Parse & Compile)
-[relational-service / base]     Test: demo::PersonService / testSuite_1 / test_1
-[relational-service / base]     Plan: demo::PersonService
-[relational-service / duckdb]   Initialization (Parse & Compile)
-[relational-service / duckdb]   Test: demo::PersonService / testSuite_1 / test_1
-[relational-service / duckdb]   Plan: demo::PersonService
-[relational-service / snowflake] Initialization (Parse & Compile)
-[relational-service / snowflake] Test: demo::PersonService / testSuite_1 / test_1
-[relational-service / snowflake] Plan: demo::PersonService
-```
-
-This gives granular visibility into which store implementations pass or fail for each
-model, directly in the IDE test runner or CI output.
-
-When no `storeVariation` is defined, the variant qualifier is omitted from task names
-(the existing format is unchanged).
-
-### 7.5 Module Placement
-
-Variant overlay files live alongside the model, in a `variants/` subdirectory:
-
-```
-emit-models/
-  relational-service/
-    model/
-      types.pure
-    store/
-      db.pure
-    mapping/
-      mapping.pure
-    service/
-      myService.pure
-    connection/
-      connection.pure          ← default (e.g., H2)
-    runtime/
-      runtime.pure
-    variants/
-      duckdb/
-        connection.pure        ← DuckDB connection overlay
-        runtime.pure
-      snowflake/
-        connection.pure        ← Snowflake connection overlay
-        runtime.pure
-```
-
-Because each database implementation lives in a separate engine module (with its own
-classpath), the store variant test naturally belongs in the module that provides that
-implementation. A relational model's DuckDB variant would be tested in the DuckDB module,
-which has DuckDB-specific dependencies on its classpath.
-
-To support this, a module can reference a model defined elsewhere and supply its own
-variant overlays. The `storeVariation` entries can be contributed by the module's own
-`emit.yaml` (or by extending the base model's descriptor — details TBD in implementation).
-
----
-
-## 8. Example Catalog Design
+## 7. Example Catalog Design
 
 The EMIT model collection doubles as a **searchable catalog of feature examples**. This section
 defines the metadata conventions and tooling foundations that make this possible.
 
-### 8.1 Model Metadata (`*.emit.yaml`)
+### 7.1 Model Metadata (`*.emit.yaml`)
 
 Every EMIT test is defined by a `*.emit.yaml` file with structured metadata and source configurations:
 
@@ -757,7 +610,7 @@ tags:
   - test-data
 ```
 
-### 8.2 Feature Taxonomy
+### 7.2 Feature Taxonomy
 
 The `features` field uses values from a controlled vocabulary. The taxonomy is extensible;
 new features can be added as the catalog grows. The initial set:
@@ -776,7 +629,7 @@ new features can be added as the catalog grows. The initial set:
 | **External Format** | `external-format`, `binding`, `schema-set` |
 | **Function Activator** | `hosted-service`, `snowflake-app`, `bigquery-function` |
 
-### 8.3 Directory Organization
+### 7.3 Directory Organization
 
 Models are organized hierarchically by primary concern:
 
@@ -808,7 +661,7 @@ emit-models/
 This hierarchy aids browsing, but the primary discovery mechanism is the metadata index,
 not the directory tree.
 
-### 8.4 Catalog Index
+### 7.4 Catalog Index
 
 The `EMITCatalogBuilder` scans classpath roots for `*.emit.yaml` files and builds an in-memory `EMITCatalogIndex`. The index supports querying models by feature, store type, complexity, and free-text search over titles, descriptions, and tags. The `EMITModelDescriptor` captures all fields from the `emit.yaml` file plus the resolved file paths.
 
@@ -816,7 +669,7 @@ The index is designed so that a future search tool can simply serialize it to JS
 
 ---
 
-## 9. Sample `.pure` Model Input
+## 8. Sample `.pure` Model Input
 
 A minimal example model for EMIT testing, with its accompanying `emit.yaml`:
 
@@ -905,7 +758,7 @@ Service demo::PersonService
 
 ---
 
-## 10. Dependencies
+## 9. Dependencies
 
 The EMIT module will depend on existing `legend-engine` modules:
 
@@ -927,8 +780,14 @@ No dependency on `legend-sdlc` is required.
 
 ---
 
-## 11. Future Extensions
+## 10. Future Extensions
 
+- **Store implementation variation**: Run a model against alternative implementations of
+  its stores (e.g., a relational model against DuckDB, Postgres, Snowflake) without
+  duplicating the model. The available variations should be **discovered from the model
+  and the classpath**, not declared in `emit.yaml` — keeping the test descriptor focused
+  on what the model is, and letting an external tool decide which variations to actually
+  run.
 - **Catalog search tool**: A web UI or CLI tool for searching and browsing the catalog index
   (e.g., `emit search --feature relational-mapping --complexity basic`).
 - **Auto-derived metadata**: Introspect `PureModelContextData` to supplement `emit.yaml` tags.
@@ -939,21 +798,16 @@ No dependency on `legend-sdlc` is required.
 - **Model coverage**: Track which model elements are exercised by tests.
 - **Feature coverage matrix**: Auto-generate a matrix showing which features are covered by
   examples and which lack coverage, helping guide the creation of new examples.
-- **Independent store instance variation**: When a model contains multiple store instances
-  (e.g., two different relational databases), vary each store's implementation independently.
-  This creates a cross-product matrix of store implementations. For example, a model with
-  Store A (H2/DuckDB) and Store B (Postgres/Snowflake) would produce four variant runs.
 
 ---
 
-## 12. Implementation Roadmap
+## 11. Implementation Roadmap
 
 | Milestone | Description |
 |---|---|
 | 1 | Create the `legend-engine-core-emit` module. Implement the core data model (`EMITResult`, `EMITPhase`, `EMITPhaseResult`), `emit.yaml` parsing (`EMITModelDescriptor`), and file loading (`EMITModelLoader`). |
 | 2 | Implement `EMITRunner` with all six pipeline phases (Parse, Compile, Model Generation, Artifact Generation, Test Execution, Plan Generation). |
 | 3 | Implement `EMITTestSuiteBuilder` for JUnit integration and granular task discovery. |
-| 4 | Add store implementation variation support to `EMITRunner` and `EMITTestSuiteBuilder`. |
-| 5 | Implement `EMITCatalogIndex` and `EMITCatalogBuilder`. Write an initial catalog of 5-10 example models with `emit.yaml` metadata. |
-| 6 | *(Future)* Catalog web UI / CLI search tool. |
-| 7 | *(Future)* Independent store instance variation (cross-product matrix). |
+| 4 | Implement `EMITCatalogIndex` and `EMITCatalogBuilder`. Write an initial catalog of 5-10 example models with `emit.yaml` metadata. |
+| 5 | *(Future)* Catalog web UI / CLI search tool. |
+| 6 | *(Future)* Store implementation variation (external tool that discovers variations from the model and runs the pipeline against them). |
