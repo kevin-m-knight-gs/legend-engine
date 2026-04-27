@@ -217,24 +217,6 @@ For each placed test, auto-generate the `*.emit.yaml` descriptor:
 - `complexity`: from the complexity score
 - `tags`: auto-generated, supplemented manually
 
-### 7.3 Directory Structure
-
-Place files following the EMIT conventions:
-
-```
-src/test/resources/emit-models/
-  <name>/
-    model/
-      types.pure
-    store/
-      db.pure
-    mapping/
-      mapping.pure
-    service/
-      myService.pure
-  <name>.emit.yaml
-```
-
 ---
 
 ## 8. Tooling
