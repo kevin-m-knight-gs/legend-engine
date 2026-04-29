@@ -581,39 +581,7 @@ new features can be added as the catalog grows. The initial set:
 | **External Format** | `external-format`, `binding`, `schema-set` |
 | **Function Activator** | `hosted-service`, `snowflake-app`, `bigquery-function` |
 
-### 7.3 Directory Organization
-
-Models are organized hierarchically by primary concern:
-
-```
-emit-models/
-  basic/                    ← Simple, single-concept examples
-    class-simple/
-    class-with-constraint/
-    enumeration/
-    function-simple/
-  mapping/                  ← Mapping-focused examples
-    m2m-basic/
-    m2m-chained/
-    relational-simple/
-    relational-joins/
-    aggregation-aware/
-  service/                  ← Service-focused examples
-    service-simple/
-    service-with-tests/
-    multi-execution/
-  generation/               ← Generation-focused examples
-    avro-generation/
-    json-schema-generation/
-  complex/                  ← Multi-feature compositions
-    service-relational-with-generation/
-    m2m-with-external-format/
-```
-
-This hierarchy aids browsing, but the primary discovery mechanism is the metadata index,
-not the directory tree.
-
-### 7.4 Catalog Index
+### 7.3 Catalog Index
 
 The `EMITCatalogBuilder` scans classpath roots for `*.emit.yaml` files and builds an in-memory `EMITCatalogIndex`. The index supports querying models by feature, store type, complexity, and free-text search over titles, descriptions, and tags. The `EMITModelDescriptor` captures all fields from the `emit.yaml` file plus the resolved file paths.
 
