@@ -3,7 +3,7 @@
 ## 1. Motivation
 
 Today, the canonical way to validate a Legend model end-to-end — parsing, compiling, running
-generations, executing tests, and generating execution plans — is through an
+generations, executing tests, and generating execution plans — is through a
 **legend-sdlc project build**. This requires a full Maven project structure, SDLC Maven plugins
 (`legend-sdlc-generation-model-maven-plugin`, `legend-sdlc-generation-file-maven-plugin`,
 `legend-sdlc-test-maven-plugin`, `legend-sdlc-generation-service-execution-maven-plugin`), and
@@ -34,8 +34,9 @@ relational mapping, connection, and test suite using shared test data).
 To support this, the EMIT framework should from the start:
 - Enforce a **structured directory layout** with machine-readable metadata per model.
 - Define a **tagging taxonomy** for features, stores, and complexity levels.
-- Build a **catalog index** that can be queried programmatically.
-- More user friendly ways of searching or browsing the catalog are future work, but the metadata foundations make them straightforward to add later.
+- Build a **catalog index** that can be queried programmatically. 
+
+More user-friendly ways of searching or browsing the catalog are future work, but the metadata foundations make them straightforward to add later.
 
 ---
 
@@ -86,7 +87,7 @@ For the remainder of this document, we use the name **EMIT**.
 | **Scope** | Functional correctness of a single function across target runtimes (databases) | Full build pipeline: parse → compile → generate → test → plan. |
 | **Target runtimes** | Executes against multiple database adapters (DuckDB, Snowflake, etc.) | Engine-only; no external database targets required (though model tests may use them) |
 | **Test discovery** | Tests tagged with `@PCT` stereotypes in Pure code | Tests discovered from `Testable` elements (services, mappings, functions) in the input model |
-| **JUnit integration** | Custom `TestSuite` builders (`PureTestBuilderCompiled`) | JUnit 4/5 integration via a custom runner or parameterized test |
+| **JUnit integration** | Custom `TestSuite` builders (`PureTestBuilderCompiled`) | JUnit 5 integration via a `@TestFactory` yielding granular dynamic tasks |
 | **Location** | `legend-engine-core/legend-engine-core-pure` and per-database PCT modules | New module: `legend-engine-core/legend-engine-core-emit` |
 
 ### 3.2 MFT (Mapping Feature Testing)
@@ -140,8 +141,14 @@ For the remainder of this document, we use the name **EMIT**.
 
 ```
                     ┌─────────────────────────────────────┐
-                    │         .pure files (input)         │
-                    │   (Legend grammar, user-authored)   │
+                    │       *.emit.yaml (input)           │
+                    │   (descriptor + .pure source set)   │
+                    └──────────────┬──────────────────────┘
+                                   │
+                    ┌──────────────▼──────────────────────┐
+                    │  Phase 0: INITIALIZATION            │
+                    │  Load descriptor, resolve files,    │
+                    │  validate clashes, segment scope    │
                     └──────────────┬──────────────────────┘
                                    │
                     ┌──────────────▼──────────────────────┐
@@ -170,7 +177,7 @@ For the remainder of this document, we use the name **EMIT**.
                     │     (FileGenerationSpecification)   │
                     │  b) ArtifactGenerationExtension SPI │
                     │     (per-element artifact gen)      │
-                    │  → generated files                  |
+                    │  → generated files                  │
                     └──────────────┬──────────────────────┘
                                    │
                     ┌──────────────▼──────────────────────┐
@@ -239,66 +246,23 @@ features being tested. Each module that contributes EMIT tests adds a test-scope
 on `legend-engine-core-emit` and places its models under `src/test/resources/emit-models/`:
 
 ```
-legend-engine-xts-relational/
-  legend-engine-xt-relational-*-test/     ← Existing or new test module
+legend-engine-xts-relationalStore/
+  legend-engine-xt-relationalStore-*-test/  ← Existing or new test module
     src/test/resources/
       emit-models/
-        relational-simple.emit.yaml       ← Test descriptor configures sources
-        relational-simple/                ← Model sources (paths resolved relative to YAML)
-          model/
-            types.pure
-          store/
-            db.pure
-          mapping/
-            mapping.pure
-          connection/
-            connection.pure
-          runtime/
-            runtime.pure
+        relational-simple.emit.yaml         ← Test descriptor configures sources
+        relational-simple/                  ← Model sources (paths resolved relative to YAML)
+          model/types.pure
+          store/db.pure
+          mapping/mapping.pure
+          connection/connection.pure
+          runtime/runtime.pure
         relational-joins.emit.yaml
         relational-joins/
-          model/
-            types.pure
-            associations.pure
-          store/
-            db.pure
-          mapping/
-            mapping.pure
           ...
-
-legend-engine-xts-service/
-  legend-engine-xt-service-*-test/
-    src/test/resources/
-      emit-models/
-        service-with-tests.emit.yaml
-        service-with-tests/
-          model/
-            types.pure
-          mapping/
-            mapping.pure
-          service/
-            myService.pure
-          store/
-            db.pure
-          connection/
-            connection.pure
-          runtime/
-            runtime.pure
-        multi-execution.emit.yaml
-        multi-execution/
-          ...
-
-legend-engine-xts-generation/
-  ...
-    src/test/resources/
-      emit-models/
-        avro-generation.emit.yaml
-        avro-generation/
-          model/
-            types.pure
-          generation/
-            genSpec.pure
 ```
+
+The same pattern applies to other extension modules (`legend-engine-xts-service`, `legend-engine-xts-generation`, etc.) — each owns the EMIT models for its feature area, with one `*.emit.yaml` per test and a sibling source-root directory.
 
 The `EMITRunner` automatically discovers all `*.emit.yaml` files. The YAML file explicitly configures which directories and files comprise the test.
 
@@ -316,20 +280,17 @@ This distribution model has several advantages:
 public class EMITRunner
 {
   /**
-   * Run the full build pipeline for the given .pure file content strings.
-   * Each string is the content of one .pure file (Legend grammar).
+   * Run the full build pipeline against an already-loaded descriptor.
+   * The descriptor carries the resolved primary model files and the
+   * dependency files (already segmented by scope).
    */
-  public EMITResult run(List<String> pureFileContents);
+  public EMITResult run(EMITModelDescriptor descriptor);
 
   /**
-   * Run the full build pipeline, loading .pure files from the given paths.
+   * Convenience: load the descriptor at the given *.emit.yaml path
+   * (resolving its model and dependencies) and run the full pipeline.
    */
-  public EMITResult runFromFiles(List<Path> pureFilePaths);
-
-  /**
-   * Run the full build pipeline, loading all .pure files under the given directory.
-   */
-  public EMITResult runFromDirectory(Path directory);
+  public EMITResult runFromYaml(Path emitYaml);
 }
 ```
 
@@ -346,6 +307,7 @@ public class EMITResult
 ```java
 public enum EMITPhase
 {
+    INITIALIZATION,    // descriptor load, file resolution, clash validation
     PARSE,
     COMPILE,
     MODEL_GENERATION,
@@ -372,7 +334,7 @@ public class EMITPhaseResult
 
 ## 5. Phase Details
 
-### 5.0 Initialization (Pre-Pipeline)
+### 5.1 Phase 0: Initialization
 
 - Parse the `*.emit.yaml` file to read the explicit source configuration, which includes `model` (the primary model files) and optionally `dependencies`.
 - `model`: Specified using a `root` directory and a list of `files`, which are resolved relative to the root.
@@ -380,9 +342,11 @@ public class EMITPhaseResult
   - An `*.emit.yaml` file path (using `source`) with an optional `excludes` list supporting `*` and `**` wildcards.
   - A `root` directory and a list of `files`, exactly like the `model` specification.
 - **Scope Segmentation**: Maintain a distinction between files loaded from the primary `model` and those loaded via `dependencies`. Dependencies are not in scope for generations, tests, etc.
-- **Clash Validation**: Assert that no two files resolve to the same virtual path. If a clash occurs, test initialization fails before any phases run.
+- **Clash Validation**: Assert that no two files resolve to the same virtual path.
+- **Success criteria**: Descriptor is well-formed and all source files resolve uniquely.
+- **Failure mode**: An `EMITPhaseResult` for `INITIALIZATION` is produced with the error; subsequent phases are skipped.
 
-### 5.1 Phase 1: Parse
+### 5.2 Phase 1: Parse
 
 - Read the content of each discovered file (from both the primary model and dependencies).
 - Call `PureGrammarParser.newInstance().parseModel(content)` for each file.
@@ -390,14 +354,14 @@ public class EMITPhaseResult
 - **Success criteria**: No grammar parse exceptions.
 - **Failure mode**: `EngineException` with source location information.
 
-### 5.2 Phase 2: Compile
+### 5.3 Phase 2: Compile
 
 - Construct a `PureModel` from the merged `PureModelContextData`.
 - Use `Compiler.compile(pmcd, DeploymentMode.TEST, ...)` or the standard `new PureModel(pmcd, ...)` path.
 - **Success criteria**: No compilation errors.
 - **Failure mode**: `EngineException` or `CompilationException` with details.
 
-### 5.3 Phase 3: Model Generation
+### 5.4 Phase 3: Model Generation
 
 - Discover `GenerationSpecification` elements in the `PureModelContextData`.
 - If present, use the `ModelGenerationExtension` SPI (loaded via `ServiceLoader`) to produce
@@ -408,18 +372,18 @@ public class EMITPhaseResult
 - **Success criteria**: Generation completes without exceptions; re-compilation succeeds.
 - **Skipped if**: No `GenerationSpecification` elements exist in the model.
 
-### 5.4 Phase 4: File Generation
+### 5.5 Phase 4: File Generation
 
 This phase covers both types of file generation:
 
-#### 5.4a Specification-Driven File Generations
+#### 5.5a Specification-Driven File Generations
 
 - Discover the `GenerationSpecification` element and iterate over its `fileGenerations` list.
 - For each `FileGenerationSpecification` referenced, find the corresponding `GenerationExtension` SPI (loaded via `ServiceLoader`) matching the specification's type.
 - Execute the generation extension to produce a list of `GenerationOutput` (e.g., Avro schemas, JSON Schemas, Protobuf definitions).
 - **Skipped if**: No `GenerationSpecification` exists, or its `fileGenerations` list is empty.
 
-#### 5.4b Element-Driven Artifact Generations
+#### 5.5b Element-Driven Artifact Generations
 
 - Load all registered `ArtifactGenerationExtension` SPIs via `ServiceLoader`.
 - For each packageable element, iterate over extensions and call `canGenerate(element)` to check applicability.
@@ -428,7 +392,7 @@ This phase covers both types of file generation:
 
 **Success criteria**: Both sub-phases complete without exceptions.
 
-### 5.5 Phase 5: Test Execution
+### 5.6 Phase 5: Test Execution
 
 - **Run Testable tests**: Find all `Testable` elements in the compiled `PureModel` (e.g., services, mappings, functions with test suites).
 - **Run Legacy Mapping tests**: Find `Mapping` elements with legacy `MappingTest` / `MappingTestSuite` elements.
@@ -439,7 +403,7 @@ This phase covers both types of file generation:
 - **Failure mode**: Failed/error `TestResult`, `RichMappingTestResult`, or `RichServiceTestResult` entries.
 - **Skipped if**: No test elements (Testable or legacy) exist in the primary model.
 
-### 5.6 Phase 6: Plan Generation
+### 5.7 Phase 6: Plan Generation
 
 - Find all `Service` elements in the `PureModelContextData`.
 - For each service, call
@@ -474,52 +438,39 @@ This is useful for scripting, CI pipelines, or any context where JUnit is not th
 
 ### 6.2 JUnit Integration
 
-To achieve granular pass/fail reporting without forcing developers to write individual tests by hand, EMIT leverages JUnit 4's built-in `Parameterized` runner. The framework provides a builder that discovers models, parses them upfront, and flattens their operations into discrete executable tasks.
+To achieve granular pass/fail reporting without forcing developers to write individual tests by hand, EMIT uses JUnit 5's `@TestFactory` mechanism. The framework provides a builder that discovers models, parses and compiles them upfront, and flattens their downstream operations into discrete `DynamicTest` tasks.
 
-To test EMIT models in a module, create a single parameterized test class:
+To test EMIT models in a module, create a single test class:
 
 ```java
-@RunWith(Parameterized.class)
 public class MyModuleEMITTestSuite
 {
-    @Parameterized.Parameters(name = "{0}")
-    public static Collection<Object[]> tasks()
+    @TestFactory
+    Stream<DynamicTest> emit()
     {
-        // Discovers models, performs initial parse/compile, and returns a flattened 
-        // list of granular EMITTask objects for generation, testing, and plan creation.
+        // Discovers models, performs initialization + parse + compile, and
+        // returns a flattened stream of granular dynamic tests for generation,
+        // testing, and plan creation.
         return EMITTestSuiteBuilder.buildTasks("emit-models/");
-    }
-
-    private final String taskName;
-    private final EMITTask task;
-
-    public MyModuleEMITTestSuite(String taskName, EMITTask task) 
-    {
-        this.taskName = taskName;
-        this.task = task;
-    }
-
-    @Test
-    public void executeTask()
-    {
-        task.run();
     }
 }
 ```
 
-When JUnit invokes the `@Parameters` method, `EMITTestSuiteBuilder` scans for `*.emit.yaml` files. For each model, it performs Phase 1 (Parse) and Phase 2 (Compile). By inspecting the compiled model, it identifies every file generation specification, every test suite, and every service.
+When JUnit invokes the factory method, `EMITTestSuiteBuilder` scans for `*.emit.yaml` files. For each model, it performs Phase 0 (Initialization), Phase 1 (Parse), and Phase 2 (Compile). By inspecting the compiled model, it identifies every model-generation specification, every file-generation specification, every artifact-generation candidate, every test, and every service.
 
-It then returns an array of granular tasks. The `{0}` parameter binds to the `taskName`, yielding highly descriptive individual JUnit test cases:
+It then yields one `DynamicTest` per granular operation, with descriptive names:
 
-- `[service-simple] Initialization (Parse & Compile)`
-- `[service-simple] Generation: MyAvroGenerationSpec`
+- `[service-simple] Initialization (Init, Parse & Compile)`
+- `[service-simple] Model Generation: demo::MyModelGenSpec`
+- `[service-simple] File Generation: demo::MyAvroGenerationSpec`
+- `[service-simple] Artifact Generation: demo::PersonService (ServiceArtifactExtension)`
 - `[service-simple] Test: demo::PersonService / testSuite_1 / test_1`
 - `[service-simple] Test: demo::PersonService / testSuite_1 / test_2`
 - `[service-simple] Plan: demo::PersonService`
 
-Because each task is a distinct JUnit parameter, IDEs and build servers (like Maven Surefire) will report granular pass/fail statuses, durations, and diffs natively.
+Because each `DynamicTest` is a distinct JUnit test, IDEs and build servers (like Maven Surefire) report granular pass/fail statuses, durations, and diffs natively.
 
-To optimize performance, the `PureModel` compiled during the discovery phase is cached and shared among all tasks belonging to the same model. If a model fails to parse or compile during discovery, `EMITTestSuiteBuilder` simply yields a single `Initialization` task that is guaranteed to fail upon execution, skipping discovery of downstream tasks.
+To optimize performance, the `PureModel` compiled during discovery is cached and shared among all tasks belonging to the same model. If a model fails initialization, parse, or compile during discovery, `EMITTestSuiteBuilder` yields a single `Initialization` task that is guaranteed to fail upon execution, skipping discovery of downstream tasks.
 
 ### 6.3 Result Model and Reporting
 
@@ -534,6 +485,7 @@ The `EMITResult.getSummary()` method produces a human-readable report:
 
 ```
 EMIT Result: FAILED
+  ✓ INITIALIZATION  (8ms)     — 4 model files, 1 dependency file
   ✓ PARSE           (42ms)    — 3 files, 12 elements
   ✓ COMPILE         (318ms)   — PureModel built successfully
   ✓ MODEL_GENERATION(15ms)    — skipped (no GenerationSpecification)
@@ -760,23 +712,16 @@ Service demo::PersonService
 
 ## 9. Dependencies
 
-The EMIT module will depend on existing `legend-engine` modules:
+The EMIT module depends only on existing `legend-engine` modules — there is no dependency on `legend-sdlc`. Its dependencies fall into a small set of categories, each contributing one stage of the pipeline:
 
-| Dependency | Purpose |
-|---|---|
-| `legend-engine-language-pure-grammar` | `PureGrammarParser` for parsing `.pure` files |
-| `legend-engine-language-pure-compiler` | `PureModel` construction / compilation |
-| `legend-engine-language-pure-dsl-generation` | `ModelGenerationExtension`, `ArtifactGenerationExtension` SPIs |
-| `legend-engine-external-shared` | `GenerationExtension` SPI |
-| `legend-engine-testable` | `TestableRunner` |
-| `legend-engine-test-runner-mapping` | `MappingTestRunner` (legacy Mapping tests) |
-| `legend-engine-test-runner-service` | `ServiceTestRunner` (legacy Service tests) |
-| `legend-engine-executionPlan-generation` | `PlanGenerator` (used internally by `ServicePlanGenerator`) |
-| `legend-engine-language-pure-dsl-service` | Service protocol model |
-| `legend-engine-language-pure-dsl-service-generation` | `ServicePlanGenerator` |
-| `legend-engine-protocol-pure` | `PureModelContextData`, `PureClientVersions` |
+- **Protocol & grammar** — `PureModelContextData`, version registry, and the `PureGrammarParser` that turns `.pure` source into protocol POJOs.
+- **Compiler** — `PureModel` construction from a `PureModelContextData`.
+- **Generation SPIs** — `ModelGenerationExtension`, `GenerationExtension`, and `ArtifactGenerationExtension`, plus their shared base modules.
+- **Test runners** — `TestableRunner` for the modern `Testable` infrastructure, plus the legacy `MappingTestRunner` and `ServiceTestRunner` for backward compatibility.
+- **Plan generation** — `ServicePlanGenerator` (for `Service` elements) and the underlying `PlanGenerator`.
+- **Service DSL** — protocol/compiler artifacts for the `Service` element type, since `Service` is special-cased by Phase 6.
 
-No dependency on `legend-sdlc` is required.
+Concrete artifact coordinates are kept in `pom.xml`; listing them here would drift.
 
 ---
 
