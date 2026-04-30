@@ -118,7 +118,7 @@
 
     <properties>
         <!-- Legend -->
-        <legend.pure.version>5.83.0</legend.pure.version>
+        <legend.pure.version>5.84.0</legend.pure.version>
         <legend.shared.version>0.34.0</legend.shared.version>
         <legend.web-application.version>13.2.0</legend.web-application.version>
         <legend.pylegend.version>0.21.0</legend.pylegend.version>
@@ -386,6 +386,18 @@
                     <groupId>com.spotify</groupId>
                     <artifactId>dockerfile-maven-plugin</artifactId>
                     <version>${dockerfile.maven.plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.finos.legend.pure</groupId>
+                    <artifactId>legend-pure-maven-compiler</artifactId>
+                    <version>${legend.pure.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>compile-pure</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.finos.legend.pure</groupId>
