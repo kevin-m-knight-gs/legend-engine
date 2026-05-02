@@ -14,7 +14,11 @@
 
 package org.finos.legend.engine.test.emit;
 
+import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestExecuted;
+import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestExecutionStatus;
+import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestResult;
 import org.finos.legend.engine.test.emit.EMITPhaseResult.Status;
+import org.finos.legend.engine.testable.model.RunTestsResult;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -56,6 +60,126 @@ public class TestEMITRunner
         Assertions.assertEquals(Status.NOT_RUN, result.getPhase(EMITPhase.MODEL_GENERATION).getStatus());
         Assertions.assertEquals(Status.NOT_RUN, result.getPhase(EMITPhase.TEST_EXECUTION).getStatus());
         Assertions.assertEquals(Status.NOT_RUN, result.getPhase(EMITPhase.PLAN_GENERATION).getStatus());
+    }
+
+    @Test
+    void compileFailureSkipsDownstreamPhases()
+    {
+        Path emitYaml = resource("emit-models/basic/compile-failure.emit.yaml");
+
+        EMITResult result = new EMITRunner().runFromYaml(emitYaml);
+
+        Assertions.assertFalse(result.isSuccess(), "Expected EMIT run to fail at COMPILE");
+        Assertions.assertEquals(Status.SUCCESS, result.getPhase(EMITPhase.INITIALIZATION).getStatus());
+        Assertions.assertEquals(Status.SUCCESS, result.getPhase(EMITPhase.PARSE).getStatus());
+        Assertions.assertEquals(Status.FAILURE, result.getPhase(EMITPhase.COMPILE).getStatus());
+        Assertions.assertEquals(Status.NOT_RUN, result.getPhase(EMITPhase.MODEL_GENERATION).getStatus());
+        Assertions.assertEquals(Status.NOT_RUN, result.getPhase(EMITPhase.FILE_GENERATION).getStatus());
+        Assertions.assertEquals(Status.NOT_RUN, result.getPhase(EMITPhase.TEST_EXECUTION).getStatus());
+        Assertions.assertEquals(Status.NOT_RUN, result.getPhase(EMITPhase.PLAN_GENERATION).getStatus());
+    }
+
+    @Test
+    void m2mMappingTestsExecuteAndPass()
+    {
+        Path emitYaml = resource("emit-models/basic/m2m-passing.emit.yaml");
+
+        EMITResult result = new EMITRunner().runFromYaml(emitYaml);
+
+        Assertions.assertEquals(Status.SUCCESS, result.getPhase(EMITPhase.PARSE).getStatus());
+        Assertions.assertEquals(Status.SUCCESS, result.getPhase(EMITPhase.COMPILE).getStatus());
+
+        EMITPhaseResult testPhase = result.getPhase(EMITPhase.TEST_EXECUTION);
+        RunTestsResult runTests = (RunTestsResult) testPhase.getOutput();
+        Assertions.assertEquals(Status.SUCCESS, testPhase.getStatus(),
+                () -> "Expected TEST_EXECUTION SUCCESS but got:\n" + result.getSummary() + "\n" + describeTestResults(runTests));
+
+        Assertions.assertEquals(2, runTests.results.size(), "Expected exactly 2 mapping tests to be executed");
+        runTests.results.forEach(r ->
+        {
+            Assertions.assertTrue(r instanceof TestExecuted, () -> "Expected TestExecuted, got " + r.getClass().getSimpleName());
+            Assertions.assertEquals(TestExecutionStatus.PASS, ((TestExecuted) r).testExecutionStatus,
+                    () -> "Expected test " + r.atomicTestId + " to PASS but got "
+                            + ((TestExecuted) r).testExecutionStatus + "; assertions=" + ((TestExecuted) r).assertStatuses);
+        });
+
+        Assertions.assertTrue(result.isSuccess(), () -> "Expected EMIT run to succeed but got:\n" + result.getSummary());
+        Assertions.assertEquals(Status.SKIPPED, result.getPhase(EMITPhase.PLAN_GENERATION).getStatus());
+    }
+
+    @Test
+    void m2mMappingTestFailureIsReported()
+    {
+        Path emitYaml = resource("emit-models/basic/m2m-mixed.emit.yaml");
+
+        EMITResult result = new EMITRunner().runFromYaml(emitYaml);
+
+        Assertions.assertFalse(result.isSuccess(), "Expected EMIT run to fail because one mapping test fails");
+
+        Assertions.assertEquals(Status.SUCCESS, result.getPhase(EMITPhase.COMPILE).getStatus());
+
+        EMITPhaseResult testPhase = result.getPhase(EMITPhase.TEST_EXECUTION);
+        Assertions.assertEquals(Status.FAILURE, testPhase.getStatus(),
+                () -> "Expected TEST_EXECUTION FAILURE but got:\n" + result.getSummary());
+        Assertions.assertTrue(testPhase.getMessage() != null && testPhase.getMessage().contains("1 failed"),
+                () -> "Expected message to mention '1 failed', got: " + testPhase.getMessage() + "\n" + result.getSummary());
+
+        // PLAN_GENERATION still runs (failure of TEST_EXECUTION does not short-circuit it).
+        Assertions.assertEquals(Status.SKIPPED, result.getPhase(EMITPhase.PLAN_GENERATION).getStatus());
+    }
+
+    @Test
+    void dependencyTestsAreNotExecuted()
+    {
+        Path emitYaml = resource("emit-models/basic/m2m-with-dep.emit.yaml");
+
+        EMITResult result = new EMITRunner().runFromYaml(emitYaml);
+
+        Assertions.assertTrue(result.isSuccess(), () -> "Expected EMIT run to succeed (dep tests must be ignored):\n" + result.getSummary());
+
+        Assertions.assertEquals(Status.SUCCESS, result.getPhase(EMITPhase.COMPILE).getStatus());
+
+        EMITPhaseResult testPhase = result.getPhase(EMITPhase.TEST_EXECUTION);
+        Assertions.assertEquals(Status.SUCCESS, testPhase.getStatus(),
+                () -> "TEST_EXECUTION did not succeed:\n" + result.getSummary());
+
+        RunTestsResult runTests = (RunTestsResult) testPhase.getOutput();
+        Assertions.assertEquals(1, runTests.results.size(),
+                () -> "Expected exactly 1 test (only the primary mapping's test should run); got "
+                        + runTests.results.size() + " results: " + describe(runTests));
+        TestResult only = runTests.results.get(0);
+        Assertions.assertEquals("demo::primary::PrimaryMapping", only.testable);
+    }
+
+    private static String describe(RunTestsResult runTests)
+    {
+        StringBuilder sb = new StringBuilder();
+        runTests.results.forEach(r -> sb.append(r.testable).append('/').append(r.testSuiteId).append('/').append(r.atomicTestId).append(' '));
+        return sb.toString();
+    }
+
+    private static String describeTestResults(RunTestsResult runTests)
+    {
+        if (runTests == null)
+        {
+            return "(no test results)";
+        }
+        StringBuilder sb = new StringBuilder("Test results:\n");
+        runTests.results.forEach(r ->
+        {
+            sb.append("  ").append(r.testable).append('/').append(r.testSuiteId).append('/').append(r.atomicTestId).append(" -> ");
+            if (r instanceof TestExecuted)
+            {
+                TestExecuted te = (TestExecuted) r;
+                sb.append(te.testExecutionStatus).append("; assertions=").append(te.assertStatuses);
+            }
+            else
+            {
+                sb.append(r.getClass().getSimpleName()).append(": ").append(r);
+            }
+            sb.append('\n');
+        });
+        return sb.toString();
     }
 
     private static Path resource(String name)
