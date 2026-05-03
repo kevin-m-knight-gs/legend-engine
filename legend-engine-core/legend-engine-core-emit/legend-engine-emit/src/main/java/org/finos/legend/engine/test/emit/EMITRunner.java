@@ -470,7 +470,7 @@ public class EMITRunner
             int failed = ListIterate.count(runTestsResult.results, r -> !(r instanceof TestExecuted) || (((TestExecuted) r).testExecutionStatus == TestExecutionStatus.FAIL));
             long elapsed = System.currentTimeMillis() - start;
             String message = total + " tests; " + failed + " failed";
-            phaseResult = (failed == 0) ? EMITPhaseResult.success(EMITPhase.TEST_EXECUTION, elapsed, message, runTestsResult) : EMITPhaseResult.failure(EMITPhase.TEST_EXECUTION, elapsed, message);
+            phaseResult = (failed == 0) ? EMITPhaseResult.success(EMITPhase.TEST_EXECUTION, elapsed, message, runTestsResult) : EMITPhaseResult.failure(EMITPhase.TEST_EXECUTION, elapsed, message, null, runTestsResult);
         }
         catch (Exception e)
         {

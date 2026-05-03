@@ -83,7 +83,12 @@ public class EMITPhaseResult
 
     public static EMITPhaseResult failure(EMITPhase phase, long durationMs, String message, Exception exception)
     {
-        return new EMITPhaseResult(phase, Status.FAILURE, durationMs, message, exception, null);
+        return failure(phase, durationMs, message, exception, null);
+    }
+
+    public static EMITPhaseResult failure(EMITPhase phase, long durationMs, String message, Exception exception, Object output)
+    {
+        return new EMITPhaseResult(phase, Status.FAILURE, durationMs, message, exception, output);
     }
 
     public static EMITPhaseResult skipped(EMITPhase phase, String reason)

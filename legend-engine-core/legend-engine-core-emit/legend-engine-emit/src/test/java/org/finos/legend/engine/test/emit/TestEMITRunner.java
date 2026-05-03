@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.test.emit;
 
+import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestError;
 import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestExecuted;
 import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestExecutionStatus;
 import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestResult;
@@ -119,10 +120,12 @@ public class TestEMITRunner
         Assertions.assertEquals(Status.SUCCESS, result.getPhase(EMITPhase.COMPILE).getStatus());
 
         EMITPhaseResult testPhase = result.getPhase(EMITPhase.TEST_EXECUTION);
+        RunTestsResult runTests = (RunTestsResult) testPhase.getOutput();
         Assertions.assertEquals(Status.FAILURE, testPhase.getStatus(),
-                () -> "Expected TEST_EXECUTION FAILURE but got:\n" + result.getSummary());
+                () -> "Expected TEST_EXECUTION FAILURE but got:\n" + result.getSummary() + "\n" + describeTestResults(runTests));
         Assertions.assertTrue(testPhase.getMessage() != null && testPhase.getMessage().contains("1 failed"),
-                () -> "Expected message to mention '1 failed', got: " + testPhase.getMessage() + "\n" + result.getSummary());
+                () -> "Expected message to mention '1 failed', got: " + testPhase.getMessage()
+                        + "\n" + result.getSummary() + "\n" + describeTestResults(runTests));
 
         // PLAN_GENERATION still runs (failure of TEST_EXECUTION does not short-circuit it).
         Assertions.assertEquals(Status.SKIPPED, result.getPhase(EMITPhase.PLAN_GENERATION).getStatus());
@@ -135,20 +138,19 @@ public class TestEMITRunner
 
         EMITResult result = new EMITRunner().runFromYaml(emitYaml);
 
-        Assertions.assertTrue(result.isSuccess(), () -> "Expected EMIT run to succeed (dep tests must be ignored):\n" + result.getSummary());
-
         Assertions.assertEquals(Status.SUCCESS, result.getPhase(EMITPhase.COMPILE).getStatus());
 
         EMITPhaseResult testPhase = result.getPhase(EMITPhase.TEST_EXECUTION);
-        Assertions.assertEquals(Status.SUCCESS, testPhase.getStatus(),
-                () -> "TEST_EXECUTION did not succeed:\n" + result.getSummary());
-
         RunTestsResult runTests = (RunTestsResult) testPhase.getOutput();
         Assertions.assertEquals(1, runTests.results.size(),
                 () -> "Expected exactly 1 test (only the primary mapping's test should run); got "
                         + runTests.results.size() + " results: " + describe(runTests));
         TestResult only = runTests.results.get(0);
         Assertions.assertEquals("demo::primary::PrimaryMapping", only.testable);
+
+        Assertions.assertEquals(Status.SUCCESS, testPhase.getStatus(),
+                () -> "TEST_EXECUTION did not succeed:\n" + result.getSummary() + "\n" + describeTestResults(runTests));
+        Assertions.assertTrue(result.isSuccess(), () -> "Expected EMIT run to succeed (dep tests must be ignored):\n" + result.getSummary());
     }
 
     private static String describe(RunTestsResult runTests)
@@ -172,6 +174,10 @@ public class TestEMITRunner
             {
                 TestExecuted te = (TestExecuted) r;
                 sb.append(te.testExecutionStatus).append("; assertions=").append(te.assertStatuses);
+            }
+            else if (r instanceof TestError)
+            {
+                sb.append("ERROR: ").append(((TestError) r).error);
             }
             else
             {
