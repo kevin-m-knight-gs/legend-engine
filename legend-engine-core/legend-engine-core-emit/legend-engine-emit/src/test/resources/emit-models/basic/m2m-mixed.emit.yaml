@@ -9,7 +9,8 @@ modelSources:
   model:
     root: m2m-mixed
     files:
-      - model.pure
+      - model/model.pure
+      - mapping/mapping.pure
 
 features:
   - class

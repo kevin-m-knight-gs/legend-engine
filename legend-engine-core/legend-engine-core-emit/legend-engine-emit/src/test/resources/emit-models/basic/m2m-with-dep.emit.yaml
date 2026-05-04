@@ -10,11 +10,14 @@ modelSources:
   model:
     root: m2m-with-dep
     files:
-      - primary.pure
+      - model/primarySource.pure
+      - model/primaryTarget.pure
+      - mapping/primaryMapping.pure
   dependencies:
     - root: m2m-dep-source
       files:
-        - dep.pure
+        - model/depModel.pure
+        - mapping/depMapping.pure
 
 features:
   - class

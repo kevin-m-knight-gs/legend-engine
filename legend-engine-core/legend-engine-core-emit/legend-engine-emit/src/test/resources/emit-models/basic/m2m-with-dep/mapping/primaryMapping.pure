@@ -12,46 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-###Pure
-Class demo::dep::SourcePerson
-{
-  firstName: String[1];
-  lastName: String[1];
-}
-
-Class demo::dep::TargetPerson
-{
-  fullName: String[1];
-}
-
-
 ###Mapping
-Mapping demo::dep::DepMapping
+Mapping demo::primary::PrimaryMapping
 (
-  *demo::dep::TargetPerson: Pure
+  *demo::primary::TargetPerson: Pure
   {
-    ~src demo::dep::SourcePerson
+    ~src demo::primary::SourcePerson
     fullName: $src.firstName + ' ' + $src.lastName
   }
 
   testSuites:
   [
-    depSuite:
+    primarySuite:
     {
-      function: |demo::dep::TargetPerson.all()->graphFetch(#{demo::dep::TargetPerson{fullName}}#)->serialize(#{demo::dep::TargetPerson{fullName}}#);
+      function: |demo::primary::TargetPerson.all()->graphFetch(#{demo::primary::TargetPerson{fullName}}#)->serialize(#{demo::primary::TargetPerson{fullName}}#);
       tests:
       [
-        depTestThatWouldFailIfRun:
+        primaryTest:
         {
           data:
           [
             ModelStore: ModelStore
               #{
-                demo::dep::SourcePerson:
+                demo::primary::SourcePerson:
                   ExternalFormat
                   #{
                     contentType: 'application/json';
-                    data: '{"firstName":"Dep","lastName":"Person"}';
+                    data: '{"firstName":"Primary","lastName":"Person"}';
                   }#
               }#
           ];
@@ -64,7 +51,7 @@ Mapping demo::dep::DepMapping
                   ExternalFormat
                   #{
                     contentType: 'application/json';
-                    data: '{"fullName":"this would not match"}';
+                    data: '{"fullName":"Primary Person"}';
                   }#;
               }#
           ];

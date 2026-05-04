@@ -12,46 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-###Pure
-Class demo::primary::SourcePerson
-{
-  firstName: String[1];
-  lastName: String[1];
-}
-
-Class demo::primary::TargetPerson
-{
-  fullName: String[1];
-}
-
-
 ###Mapping
-Mapping demo::primary::PrimaryMapping
+Mapping demo::PersonM2MMapping
 (
-  *demo::primary::TargetPerson: Pure
+  *demo::target::Person: Pure
   {
-    ~src demo::primary::SourcePerson
+    ~src demo::source::Person
     fullName: $src.firstName + ' ' + $src.lastName
   }
 
   testSuites:
   [
-    primarySuite:
+    fullNameSuite:
     {
-      function: |demo::primary::TargetPerson.all()->graphFetch(#{demo::primary::TargetPerson{fullName}}#)->serialize(#{demo::primary::TargetPerson{fullName}}#);
+      function: |demo::target::Person.all()->graphFetch(#{demo::target::Person{fullName}}#)->serialize(#{demo::target::Person{fullName}}#);
       tests:
       [
-        primaryTest:
+        passing:
         {
           data:
           [
             ModelStore: ModelStore
               #{
-                demo::primary::SourcePerson:
+                demo::source::Person:
                   ExternalFormat
                   #{
                     contentType: 'application/json';
-                    data: '{"firstName":"Primary","lastName":"Person"}';
+                    data: '{"firstName":"John","lastName":"Smith"}';
                   }#
               }#
           ];
@@ -64,7 +51,35 @@ Mapping demo::primary::PrimaryMapping
                   ExternalFormat
                   #{
                     contentType: 'application/json';
-                    data: '{"fullName":"Primary Person"}';
+                    data: '{"fullName":"John Smith"}';
+                  }#;
+              }#
+          ];
+        },
+        failing:
+        {
+          data:
+          [
+            ModelStore: ModelStore
+              #{
+                demo::source::Person:
+                  ExternalFormat
+                  #{
+                    contentType: 'application/json';
+                    data: '{"firstName":"John","lastName":"Smith"}';
+                  }#
+              }#
+          ];
+          asserts:
+          [
+            expected:
+              EqualToJson
+              #{
+                expected:
+                  ExternalFormat
+                  #{
+                    contentType: 'application/json';
+                    data: '{"fullName":"intentionally wrong"}';
                   }#;
               }#
           ];
