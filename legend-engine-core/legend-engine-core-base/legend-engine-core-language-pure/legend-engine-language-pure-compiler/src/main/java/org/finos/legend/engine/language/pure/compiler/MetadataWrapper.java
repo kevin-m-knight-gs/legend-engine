@@ -22,6 +22,7 @@ import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 import org.finos.legend.pure.runtime.java.compiled.metadata.Metadata;
 
+@Deprecated
 public class MetadataWrapper implements Metadata
 {
     private final Metadata lazy;
@@ -61,7 +62,7 @@ public class MetadataWrapper implements Metadata
     @Override
     public CoreInstance getMetadata(String classifier, String id)
     {
-        if ((M3Paths.Package.equals(classifier) && M3Paths.Root.equals(id)))
+        if (M3Paths.Package.equals(classifier) && M3Paths.Root.equals(id))
         {
             return this.root;
         }

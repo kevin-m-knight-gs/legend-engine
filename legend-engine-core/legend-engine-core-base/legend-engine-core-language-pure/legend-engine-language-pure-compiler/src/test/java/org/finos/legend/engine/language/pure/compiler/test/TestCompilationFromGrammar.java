@@ -52,10 +52,7 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
-
-import static org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel.METADATA_LAZY;
 
 public class TestCompilationFromGrammar
 {
@@ -1342,7 +1339,7 @@ public class TestCompilationFromGrammar
                 "}");
         PureModel compiled = Compiler.compile(model, DeploymentMode.TEST, Identity.getAnonymousIdentity().getName(), "", pm.getExecutionSupport().getMetadata());
 
-        PureModel result = Compiler.compile(model, DeploymentMode.TEST, Identity.getAnonymousIdentity().getName(), "", new MetadataWrapper(new Package_Impl(M3Paths.Root)._name(M3Paths.Root), METADATA_LAZY, compiled));
+        PureModel result = Compiler.compile(model, DeploymentMode.TEST, Identity.getAnonymousIdentity().getName(), "", new MetadataWrapper(new Package_Impl(M3Paths.Root)._name(M3Paths.Root), PureModel.METADATA_LAZY, compiled));
 
         ConcreteFunctionDefinition<?> func = result.getConcreteFunctionDefinition("example::testAny__Any_1_", null);
         Type returnType = ((FunctionType) func._classifierGenericType()._typeArguments().getOnly()._rawType())._returnType()._rawType();
