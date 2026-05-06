@@ -15,10 +15,7 @@
 package org.finos.legend.engine.pure.runtime.compiler.interpreted.natives;
 
 import org.eclipse.collections.api.map.MapIterable;
-import org.finos.legend.engine.language.pure.compiler.MetadataWrapper;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
-import org.finos.legend.pure.generated.Package_Impl;
-import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.ProcessorSupport;
 import org.finos.legend.pure.m3.navigation._package._Package;
 import org.finos.legend.pure.m3.navigation.enumeration.Enumeration;
@@ -65,16 +62,13 @@ public class InterpretedMetadata implements Metadata
         {
             id = id.substring(6);
         }
-        if (classifier.equals(MetadataJavaPaths.LambdaFunction))
+        if (MetadataJavaPaths.LambdaFunction.equals(classifier))
         {
             // This path is used when Java generated code is called using a Pure IDE mixed context
             // (The SQL compiler is calling Pure generated code in compiled phase).
-            return new MetadataWrapper(new Package_Impl(M3Paths.Root)._name(M3Paths.Root), METADATA_LAZY).getMetadata(classifier, id);
+            return METADATA_LAZY.getMetadata(classifier, id);
         }
-        else
-        {
-            return _Package.getByUserPath(id, processorSupport);
-        }
+        return _Package.getByUserPath(id, this.processorSupport);
     }
 
     @Override
