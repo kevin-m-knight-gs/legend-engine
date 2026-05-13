@@ -193,29 +193,73 @@ restructuring and renaming are faithful. Any failures indicate translation bugs.
 
 ### 7.1 Module Assignment
 
-Each translated test must be placed in the appropriate `legend-engine` module. Because a
-model's fingerprint typically contains several feature tags, the module is determined by
-picking the most specific tag in the following precedence order (top wins):
+Each translated test must be placed in a `legend-engine` module whose classpath
+covers **every** feature the test exercises. The rule:
 
-1. `file-generation`, `model-generation`, `generation-specification`
-2. `external-format`, `binding`, `schema-set`
-3. `service`, `service-test`, `multi-execution-service`
-4. `m2m-mapping`
-5. `relational-*` (mapping / store / connection)
-6. `flat-data-store`
-7. Basic types only (`class`, `enumeration`, `association`, …)
+> Pick the most specific per-feature `-emit` module whose classpath covers all
+> features in the fingerprint. If no per-feature module covers the combination,
+> fall back to a cross-cutting aggregate test module.
 
-The matched tag selects the target module area from the table below:
+A "place by primary feature" heuristic is wrong here: a test exercising both a
+relational store and an external-format binding cannot live in
+`legend-engine-xt-relationalStore-emit` or in the external-format module alone,
+because neither module has the other's classes on its classpath. Such
+cross-cutting tests belong in the fallback module.
 
-| Primary Feature | Target Module Area |
+#### Per-feature `-emit` modules
+
+When a model's fingerprint stays within a single feature area, place the test in
+that area's dedicated `-emit` module (created per the EMIT distribution model
+described in `emit.md` §3.2):
+
+| Feature area in fingerprint | Target `-emit` module |
 |---|---|
-| `relational-*` | `legend-engine-xts-relationalStore` |
-| `service`, `service-test` | `legend-engine-xts-service` |
-| `m2m-mapping` | `legend-engine-xts-service` (or M2M-specific module) |
-| `file-generation`, `model-generation` | `legend-engine-xts-generation` |
-| `external-format`, `binding` | `legend-engine-core/legend-engine-core-external-format` (plus per-format xts modules where applicable, e.g. `legend-engine-xts-json/legend-engine-external-format-jsonSchema`) |
-| `flat-data-store` | `legend-engine-xts-flatdata` |
-| Basic types only | `legend-engine-emit` (bootstrap examples) |
+| Basic types only (`class`, `enumeration`, `association`, …) | `legend-engine-emit` (bootstrap examples in the runner's own test resources) |
+| Relational mapping / store / connection | `legend-engine-xts-relationalStore/legend-engine-xt-relationalStore-emit` |
+| Service / service-test (with a mapping/store the module already depends on) | `legend-engine-xts-service/legend-engine-xt-service-emit` |
+| M2M mapping (no service) | `legend-engine-core/legend-engine-core-emit/legend-engine-emit-m2m` (a dedicated M2M test module, sibling of the EMIT runner — M2M is a core mapping flavor with no `xts-*` home, so it lives next to the framework rather than buried in the in-memory store executor) |
+| File generation / model generation | `legend-engine-xts-generation/legend-engine-xt-generation-emit` |
+| External format / binding | `legend-engine-core/legend-engine-core-external-format/...-emit`, plus per-format xts modules where applicable (e.g. `legend-engine-xts-json/legend-engine-external-format-jsonSchema-emit`) |
+| Flat-data store | `legend-engine-xts-flatdata/legend-engine-xt-flatdata-emit` |
+
+A per-feature module is a valid placement target only if its classpath already
+includes **all** other feature classes the test needs. For example, a service test
+backed by a relational mapping can go in the service `-emit` module only if that
+module declares test-scoped dependencies on the relational store. When it doesn't,
+the test belongs in the cross-feature test module described next.
+
+#### Cross-feature tests: `legend-engine-config/legend-engine-emit-tests`
+
+The most realistic Legend models combine several feature areas — a service backed
+by a relational mapping with an external-format binding, or a multi-execution
+service that drives a function activator. There is no single per-feature module
+whose classpath naturally covers such combinations, so these tests are gathered
+in a dedicated cross-feature test module:
+
+- **`legend-engine-config/legend-engine-emit-tests`** carries a test-scoped
+  dependency on `legend-engine-extensions-collection-generation`, which pulls in
+  the full set of protocol/grammar/compiler/generation extensions. This makes
+  every feature area available on its classpath. Routing only multi-area tests
+  here keeps per-feature modules slim while giving cross-feature integration
+  tests a proper home rather than scattering them.
+
+These are integration tests first — exercising the engine end-to-end across
+several feature areas in a single model — and exemplars second. This module does
+not yet exist; introducing it is part of standing the harvest output up in the
+codebase.
+
+#### Selection algorithm
+
+For each translated model:
+
+1. Determine the set of feature areas touched by its fingerprint.
+2. If a single per-feature `-emit` module's classpath covers that set, place the
+   test there.
+3. Otherwise place the test in `legend-engine-config/legend-engine-emit-tests`.
+
+This keeps single-feature tests next to the code they exercise while letting the
+cross-feature test module host the multi-area cases without forcing per-feature
+modules to drag in unrelated dependencies.
 
 ### 7.2 `emit.yaml` Generation
 
