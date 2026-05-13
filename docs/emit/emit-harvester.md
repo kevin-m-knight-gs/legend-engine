@@ -31,7 +31,7 @@ The harvest process has five stages:
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   DISCOVER   │────▶│   CLASSIFY   │────▶│    SELECT    │────▶│  TRANSLATE   │────▶│    PLACE     │
+│   EXTRACT    │────▶│   CLASSIFY   │────▶│    SELECT    │────▶│  TRANSLATE   │────▶│    PLACE     │
 │              │     │              │     │              │     │              │     │              │
 │ Scan for     │     │ Feature      │     │ Pick best    │     │ Simplify     │     │ Module &     │
 │ Studio       │     │ fingerprint  │     │ candidate    │     │ packages,    │     │ emit.yaml    │
@@ -46,7 +46,7 @@ better examples.
 
 ---
 
-## 3. Stage 1: Discover
+## 3. Stage 1: Extract
 
 Use the backend abstraction (see §8.2) to enumerate all Studio projects on the hosting
 platform. For each identified project, extract the `.pure` files from the default branch.
@@ -67,7 +67,7 @@ subsequent stages in the engine-side harvester.
 
 For each successfully compiled project, compute a **feature fingerprint** — a set of tags
 describing the Legend features exercised by the model. This uses the same taxonomy defined
-in `emit.md` §7.2.
+in `emit.md` §6.2.
 
 The fingerprint is derived by inspecting the `PureModelContextData`:
 - **Element types**: Which `classifierPath` values are present? (e.g., `meta::pure::metamodel::type::Class`,
@@ -170,7 +170,7 @@ If the selected project has dependencies on other Studio projects, there are two
 
 - **Inline**: If the dependency is small, inline its `.pure` files into the EMIT test
   as a dependency with a separate root. The dependency's packages are simplified alongside
-  the primary model (see §6.2).
+  the primary model (see §6.1).
 - **Shared**: If multiple selected tests share the same dependency, create a shared
   EMIT model for it and reference it via the `source` dependency mechanism. The shared
   model's packages must be simplified once, and all referencing tests must use the
@@ -193,18 +193,29 @@ restructuring and renaming are faithful. Any failures indicate translation bugs.
 
 ### 7.1 Module Assignment
 
-Each translated test must be placed in the appropriate `legend-engine` module. The primary
-feature tag determines the module:
+Each translated test must be placed in the appropriate `legend-engine` module. Because a
+model's fingerprint typically contains several feature tags, the module is determined by
+picking the most specific tag in the following precedence order (top wins):
+
+1. `file-generation`, `model-generation`, `generation-specification`
+2. `external-format`, `binding`, `schema-set`
+3. `service`, `service-test`, `multi-execution-service`
+4. `m2m-mapping`
+5. `relational-*` (mapping / store / connection)
+6. `flat-data-store`
+7. Basic types only (`class`, `enumeration`, `association`, …)
+
+The matched tag selects the target module area from the table below:
 
 | Primary Feature | Target Module Area |
 |---|---|
-| `relational-*` | `legend-engine-xts-relational` |
+| `relational-*` | `legend-engine-xts-relationalStore` |
 | `service`, `service-test` | `legend-engine-xts-service` |
 | `m2m-mapping` | `legend-engine-xts-service` (or M2M-specific module) |
 | `file-generation`, `model-generation` | `legend-engine-xts-generation` |
-| `external-format`, `binding` | `legend-engine-xts-externalFormat` |
+| `external-format`, `binding` | `legend-engine-core/legend-engine-core-external-format` (plus per-format xts modules where applicable, e.g. `legend-engine-xts-json/legend-engine-external-format-jsonSchema`) |
 | `flat-data-store` | `legend-engine-xts-flatdata` |
-| Basic types only | `legend-engine-core-emit` (bootstrap examples) |
+| Basic types only | `legend-engine-emit` (bootstrap examples) |
 
 ### 7.2 `emit.yaml` Generation
 
@@ -245,7 +256,7 @@ placing it in `legend-engine` with a dependency on `legend-sdlc` creates a pseud
 version dependency (engine vN → sdlc vM → engine vN-1); placing it entirely in `legend-sdlc`
 puts the tool far from the EMIT framework it serves.
 
-The solution is to **split the tool at the natural boundary**: the `discover` stage is the
+The solution is to **split the tool at the natural boundary**: the `extract` stage is the
 only part that needs SDLC project structure knowledge. Everything after it operates on `.pure`
 files and `PureModelContextData`, which are engine-native concepts.
 
@@ -420,17 +431,17 @@ Each extracted project directory contains a `project-manifest.json`:
 
 - For each selected project, reads the extracted `.pure` files and their dependency files.
 - Parses all files into a combined `PureModelContextData`.
-- Applies package simplification (§6.2):
+- Applies package simplification (§6.1):
     - Computes the longest common package prefix.
     - Replaces it with `demo`.
     - Walks the entire `PureModelContextData` to update all path references.
-- Applies element renaming (§6.3) using a configurable rename map. Elements not in the
+- Applies element renaming (§6.2) using a configurable rename map. Elements not in the
   rename map keep their original (post-simplification) names.
 - Re-emits the modified `PureModelContextData` using `PureGrammarComposer`, splitting
   output into files by element type (model, store, mapping, service, connection, runtime,
   generation).
 - Partitions output into primary model files and dependency files.
-- Runs the full EMIT pipeline on the result to validate (§6.5). Failures are logged.
+- Runs the full EMIT pipeline on the result to validate (§6.4). Failures are logged.
 - Writes the translated files to the output directory, one subdirectory per model.
 
 #### 8.4.5 `place` (Engine-side)
