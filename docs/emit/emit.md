@@ -604,6 +604,7 @@ new features can be added as the catalog grows. The initial set:
 | **Data** | `data-element`, `test-data`, `shared-test-data` |
 | **External Format** | `external-format`, `binding`, `schema-set` |
 | **Function Activator** | `hosted-service`, `snowflake-app`, `bigquery-function` |
+| **Persistence** | `persistence`, `service-output-target` |
 
 ### 6.3 Catalog Index
 
