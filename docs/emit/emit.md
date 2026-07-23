@@ -774,6 +774,8 @@ infrastructure rather than the feature under test:
 | `scaffolding:relational-store` | A relational store definition (typically H2) |
 | `scaffolding:relational-connection` | A relational database connection |
 | `scaffolding:relational-mapping` | Base relational class mapping (no special features) |
+| `scaffolding:relation-function` | A Pure function returning a `Relation<Any>`, used as a mapping source |
+| `scaffolding:relation-mapping` | Base relation-function class mapping (`~func` / `~src`, no special features) |
 | `scaffolding:m2m-mapping` | Base model-to-model mapping |
 | `scaffolding:runtime` | A runtime definition |
 | `scaffolding:model-connection` | A model connection (M2M tests) |
@@ -824,6 +826,23 @@ infrastructure rather than the feature under test:
 | `mapping:relational-table-alias-column` | Table-alias column reference |
 | `mapping:router-union` | Router union mapping |
 | `mapping:store-union` | Store union mapping |
+
+**Relation-function mappings** (`Relation` class mappings — `~func` / `~src`; grammar
+in `RelationFunctionMappingParserGrammar.g4`). These are mapping-level capabilities and
+so live in the `mapping:` domain alongside their relational counterparts:
+
+| Feature | Description |
+|---|---|
+| `mapping:relation-binding-transformer` | `Binding <qualifiedName>:` property transformer |
+| `mapping:relation-embedded` | Embedded property mapping — `prop ( ... )` |
+| `mapping:relation-expression-rhs` | Full `$src` expression as a property RHS (vs. a bare column) |
+| `mapping:relation-inline-embedded` | Inline embedded property mapping — `prop () Inline [setId]` |
+| `mapping:relation-local-property` | Local property — `+prop: Type[mult]: <rhs>` |
+| `mapping:relation-model-join` | ModelJoin association between relation-mapped classes |
+| `mapping:relation-primary-key` | Explicit `~primaryKey: col` / `~primaryKey: [a, b]` |
+| `mapping:relation-src` | `~src` inline-source form (vs. `~func`) |
+| `mapping:relation-union` | Union of relation set implementations |
+| `mapping:relation-window-function` | Window function (`over(...)` / `->extend`) in the source relation |
 
 #### Store — relational store-level features
 
@@ -915,6 +934,21 @@ that case:
 2. Include the taxonomy update in the same PR as the new EMIT test.
 3. If a new *domain* is needed (e.g., `data-quality`), add a new
    subsection and update the complexity-scoring guidance accordingly.
+
+**Pick the domain by concern, not by convenience, and reuse before you invent.**
+Two rules keep the matrix meaningful:
+
+- A capability that is store-agnostic gets **one** entry reused by every store
+  flavour. `mapping:enumeration-mapping` and `mapping:mapping-include` cover the
+  relational *and* relation-function forms; do not mint
+  `grammar:enumeration-mapping` / `grammar:mapping-include` alongside them.
+- A capability with a dedicated domain belongs in that domain. Milestoning is
+  `milestoning:*` — tagging a temporal model `grammar:milestoning` hides it from
+  the milestoning coverage roll-up even though the test genuinely exercises it.
+
+Because an untaxonomised or mis-domained tag makes a covered capability read as a
+gap, the coverage matrix in `emit-coverage-plan.md` §2 is only as accurate as this
+table. Adding the entry in the same PR is what keeps the two in sync.
 
 ### 6.3 Catalog Index
 
