@@ -30,8 +30,10 @@ roots. Shared-dependency bundles (`relational-shared-domain`,
 
 ### 1.1 `legend-engine-xt-relationalStore-emit` — `relational-emit-models/`
 
-Driven by `RelationalEMITTests`. 24 descriptors, 178 dynamic tests. The seven
+Driven by `RelationalEMITTests`. 25 descriptors, 186 dynamic tests. The eight
 below predate the Phase A batch; the 17 added by Phase A are listed in §3.1.
+(`relational-service-with-join` was dead until §3.0 renamed it to `.emit.yaml`;
+it now discovers, runs, and passes — see §2.10(d).)
 
 | Descriptor | Non-scaffolding features | Complexity |
 |---|---|---|
@@ -42,6 +44,7 @@ below predate the Phase A batch; the 17 added by Phase A are listed in §3.1.
 | `relational-joins` | `execution:data-element`, `execution:test-data`, `grammar:association`, `store:relational-inner-join` | intermediate |
 | `relational-enumeration` | `execution:data-element`, `execution:test-data`, `grammar:enumeration`, `mapping:enumeration-mapping` | intermediate |
 | `relational-service` | `execution:service`, `execution:service-test` | basic |
+| `relational-service-with-join` | `execution:service`, `execution:service-test`, `grammar:association`, `grammar:derived-property`, `store:relational-inner-join` | intermediate |
 
 ### 1.2 `legend-engine-xt-relationalStore-emit` — `relation-emit-models/`
 
@@ -139,30 +142,31 @@ self-test fixture (no distributed/real-extension example) · **❌** no coverage
 
 Scaffolding is fully exercised.
 
-### 2.2 Grammar — 5 / 10 covered
+### 2.2 Grammar — 6 / 10 covered
 
 | Capability | Status |
 |---|---|
 | `grammar:association` | ✅ |
-| `grammar:class-inheritance` | ✅ Phase A (`relational-{single-table,joined-table}-inheritance`, `relational-{operation-mapping,polymorphic-query}`) |
+| `grammar:class-inheritance` | ✅ Phase A (`relational-{single-table,joined-table}-inheritance`, `relational-{operation-mapping,polymorphic-query}`); also `relation-window-function` (`RankedEmployee extends Employee`) |
 | `grammar:derived-property` | ✅ |
 | `grammar:enumeration` | ✅ |
-| `grammar:function` | ✅ relation suite (every `~func` model declares a standalone Pure function) — **tag not yet applied** |
+| `grammar:function` | ✅ relation suite — tag applied to all 19 executable `~func` models in §3.0 |
+| `grammar:nested-association` | ✅ `relation-modelJoin-chained` (multi-level `firm.departments.staff` traversal) |
 | `grammar:constraint` | ❌ |
 | `grammar:measure` | ❌ |
-| `grammar:nested-association` | ❌ |
 | `grammar:profile` | ❌ |
 | `grammar:qualified-property` | ❌ |
 
-> `grammar:function` is the second instance of the §2.10 pattern: the capability
-> is genuinely exercised by all 19 executable relation models, but no descriptor
-> claims the tag, so it read as a gap. Counted as covered here on the strength of
-> the sources; apply the tag as part of the §3.0 normalization.
+> `grammar:function` was the second instance of the §2.10 pattern: genuinely
+> exercised by all 19 executable relation models but claimed by none, so it read
+> as a gap. §3.0 applied the tag, and it is now machine-checkable.
 
-### 2.3 Mapping — 27 / 37 covered
+### 2.3 Mapping — 31 / 40 covered
 
 The relational half of this domain went from 1/27 to 17/27 in Phase A; the
-relation-function half is new (10 entries, §6.2 of `emit.md`).
+relation-function half (13 entries, §6.2 of `emit.md`) is new — §3.0 added
+`relation-filter`, `relation-group-by`, and `relation-xstore-association` to it
+while normalizing the relation batch.
 
 **Relational + store-agnostic**
 
@@ -200,16 +204,19 @@ relation-function half is new (10 entries, §6.2 of `emit.md`).
 
 | Capability | Status |
 |---|---|
-| `mapping:relation-embedded` | ✅ `relation-embedded` (tagged `grammar:embedded-relation`) |
-| `mapping:relation-expression-rhs` | ✅ `relation-expression-rhs` (tagged `grammar:relation-expression-rhs`) |
-| `mapping:relation-inline-embedded` | ✅ `relation-inline-embedded` (tagged `grammar:embedded-relation-inline`) |
-| `mapping:relation-local-property` | ✅ `relation-{join,modelJoin,modelJoin-chained,window-function,mixed-association-chain}` — **tag not yet applied** |
-| `mapping:relation-model-join` | ✅ `relation-modelJoin*` etc. (tagged `store:relation-model-join`) |
-| `mapping:relation-src` | ✅ `relation-src` (tagged `grammar:relation-src`) |
-| `mapping:relation-union` | ✅ `relation-union`, `relation-union-enum`, `relation-relational-union` (tagged `grammar:relation-union`) |
-| `mapping:relation-window-function` | ✅ `relation-window-function` (tagged `grammar:window-function`) |
-| `mapping:relation-binding-transformer` | ❌ **real gap** — see §3.1b |
-| `mapping:relation-primary-key` | ❌ **real gap** — see §3.1b |
+| `mapping:relation-embedded` | ✅ `relation-embedded`, `relation-union-enum` |
+| `mapping:relation-expression-rhs` | ✅ `relation-expression-rhs` |
+| `mapping:relation-filter` | ✅ `relation-filter` (source-relation `->filter`; §3.0 taxonomy addition) |
+| `mapping:relation-group-by` | ✅ `relation-groupBy` (source-relation `->groupBy`; §3.0 taxonomy addition) |
+| `mapping:relation-inline-embedded` | ✅ `relation-inline-embedded` |
+| `mapping:relation-local-property` | ✅ `relation-{join,modelJoin,modelJoin-chained,window-function,mixed-association-chain}` |
+| `mapping:relation-model-join` | ✅ `relation-{modelJoin,modelJoin-chained,window-function,milestoning-modelJoin-asymmetric}` (ModelJoin only) |
+| `mapping:relation-src` | ✅ `relation-src` |
+| `mapping:relation-union` | ✅ `relation-union`, `relation-union-enum`, `relation-relational-union` |
+| `mapping:relation-window-function` | ✅ `relation-window-function` |
+| `mapping:relation-xstore-association` | ✅ `relation-join`, `relation-mixed-association-chain` (XStore, distinct from ModelJoin; §3.0 taxonomy addition + finding — see §2.10(b)) |
+| `mapping:relation-primary-key` | ✅ `relation-primary-key` (single + composite `~primaryKey: [...]`; Phase B′) |
+| `mapping:relation-binding-transformer` | ❌ **real gap** — deferred to §3.7 external-format batch (see §3.1b) |
 
 > Note: `relational-joins` navigates an association via `[db]@Join` property
 > mappings but is tagged `store:relational-inner-join` + `grammar:association`,
@@ -238,7 +245,7 @@ relation-function half is new (10 entries, §6.2 of `emit.md`).
 
 | Capability | Status |
 |---|---|
-| `milestoning:business-temporal` | ✅ `relation-milestoning-modelJoin-asymmetric` |
+| `milestoning:business-temporal` | ✅ `relation-milestoning` (`BusinessTemporalEmployee.all(%date)`), `relation-milestoning-modelJoin-asymmetric` |
 | `milestoning:processing-temporal` | ✅ `relation-milestoning`, `relation-milestoning-modelJoin-asymmetric` |
 | `milestoning:point-in-time-query` | ✅ `relation-milestoning` (`all(%date)`), asymmetric (independent as-of dates per side) |
 | `milestoning:all-versions-query` | ✅ `relation-milestoning` (`allVersions()`) |
@@ -250,12 +257,14 @@ relation-function half is new (10 entries, §6.2 of `emit.md`).
 > query functions), distinct from the persistence temporal capabilities in §2.7
 > which are fully covered.
 >
-> **This domain is the sharpest example of the §2.10 metadata problem.** Both
-> models declare `grammar:milestoning` — a value that is not in the taxonomy at
-> all — so five genuinely-covered capabilities were invisible to this matrix and
-> the domain still read "0 / 7, entire domain uncovered". The coverage above is
-> asserted from the `.pure` sources, and becomes machine-checkable once the tags
-> are normalized (§3.0). Phase C shrinks accordingly — see §3.3.
+> **This domain was the sharpest example of the §2.10 metadata problem.** Both
+> models declared `grammar:milestoning` — a value not in the taxonomy at all — so
+> five genuinely-covered capabilities were invisible to this matrix and the domain
+> read "0 / 7, entire domain uncovered". §3.0 split that tag into the specific
+> `milestoning:*` values each source actually exercises (confirmed against the
+> `.pure`: `relation-milestoning` queries both processing- **and** business-temporal
+> classes plus `allVersions()`/`all(%date)`, so it alone earns all five), so the
+> coverage above is now machine-checkable. Phase C shrinks accordingly — see §3.3.
 
 ### 2.6 Execution — 5 / 17 covered
 
@@ -289,19 +298,22 @@ opportunities here are combination-level only (see §3.4) and are low priority.
 | Domain | Covered / Total | Was (pre-Phase A) |
 |---|---|---|
 | Scaffolding | 9 / 9 | 7 / 7 |
-| Grammar | 5 / 10 | 3 / 10 |
-| Mapping | 27 / 37 | 1 / 27 |
+| Grammar | 6 / 10 | 3 / 10 |
+| Mapping | 31 / 40 | 1 / 27 |
 | Store | 3 / 13 | 3 / 13 |
 | Milestoning | 5 / 7 | 0 / 7 |
 | Execution | 5 / 17 (1 out-of-scope — §2.9) | 5 / 17 |
 | Persistence | 12 / 12 | 12 / 12 |
-| **Total** | **66 / 105** | **31 / 93** |
+| **Total** | **71 / 108** | **31 / 93** |
 
 Totals grew because the relation-function work added 12 real capabilities to the
-taxonomy (§6.2 of `emit.md`) as well as covering them.
+taxonomy (§6.2 of `emit.md`) as well as covering them, and §3.0 added 3 more
+(`mapping:relation-filter`, `mapping:relation-group-by`,
+`mapping:relation-xstore-association`) while normalizing the relation batch —
+all three immediately covered.
 
 The picture has changed substantially. **Mapping is no longer the hole** — it went
-from 1/27 to 27/37 across Phase A and the relation batch. **Milestoning is nearly
+from 1/27 to 30/40 across Phase A and the relation batch. **Milestoning is nearly
 closed** rather than untouched. The remaining concentrations are now:
 
 - **Store — 3 / 13, entirely untouched.** The join-flavour and store-shape long
@@ -343,9 +355,10 @@ remain in scope — see §3.6.
 ### 2.10 Metadata debt in the relation batch
 
 The 22 relation descriptors are sound as *tests* — all 211 dynamic tests pass and
-the `.pure` sources reach real capability. But their metadata diverges from the
+the `.pure` sources reach real capability. But their metadata diverged from the
 taxonomy in four ways, and because §2 is computed from metadata, the divergence
-made covered capabilities read as gaps. Fixing it is §3.0.
+made covered capabilities read as gaps. **§3.0 has now been applied**; this
+subsection records the diagnosis, and the divergences below are resolved.
 
 **(a) Twelve off-taxonomy feature values.** None of these exist in `emit.md` §6.2
 as it stood; the "add the entry in the same PR" rule (§6.2, *Evolving the
@@ -362,7 +375,7 @@ Taxonomy*) was not applied. Three collide with entries that already existed:
 | `grammar:relation-src` | `mapping:relation-src` | mapping-level concern |
 | `grammar:relation-union` | `mapping:relation-union` | mapping-level concern |
 | `grammar:window-function` | `mapping:relation-window-function` | mapping-level concern |
-| `store:relation-model-join` | `mapping:relation-model-join` | declared in the `Mapping`, not the store |
+| `store:relation-model-join` | `mapping:relation-model-join` **or** `mapping:relation-xstore-association` | declared in the `Mapping`, not the store; **and** the mechanism differs by model — `relation-{modelJoin,modelJoin-chained,window-function,milestoning-modelJoin-asymmetric}` use `ModelJoin`, while `relation-join` and `relation-mixed-association-chain` use `XStore`. The single old tag conflated the two; §3.0 splits them (see (b)) |
 | `scaffolding:relation-function` | *(registered as-is)* | now in the taxonomy |
 | `scaffolding:relation-mapping` | *(registered as-is)* | now in the taxonomy |
 
@@ -375,10 +388,18 @@ treats an exact sorted feature-set match as a duplicate. Six descriptors form tw
 - `relation-simple` ≡ `relation-filter` ≡ `relation-groupBy`
 - `relation-join` ≡ `relation-modelJoin` ≡ `relation-modelJoin-chained`
 
-The tests are genuinely distinct — the collisions are caused by missing tags, not
-by redundant tests. `relation-filter` needs a filter tag, `relation-groupBy` an
-aggregation tag, and the modelJoin trio needs `mapping:relation-local-property`
-plus something to separate single-hop from chained.
+The tests are genuinely distinct — the collisions were caused by missing tags, not
+by redundant tests. §3.0 broke them: `relation-filter` gained `mapping:relation-filter`
+and `relation-groupBy` gained `mapping:relation-group-by` (both new §6.2 entries for
+source-relation operations). For the second cluster, reading the sources corrected a
+mistaken premise in an earlier draft of this plan — the three are **not** three
+ModelJoins differing by hop count. `relation-join` uses an `XStore` association,
+`relation-modelJoin` a single-hop `ModelJoin`, and `relation-modelJoin-chained` a
+two-hop `ModelJoin` chain. So the distinguishers are `mapping:relation-xstore-association`
+(new §6.2 entry) for `relation-join`, `mapping:relation-model-join` for the other two,
+plus `mapping:relation-local-property` on all three and `grammar:{association,nested-association}`
+on the chained one. (Had they all been tagged `mapping:relation-model-join` + local-property,
+`relation-join` and `relation-modelJoin` would have stayed identical.)
 
 **(c) Under-tagged sources.** `mapping:relation-local-property` (`+prop: Type[m]:
 rhs`) is exercised by five models and claimed by none. `grammar:function` is
@@ -386,14 +407,16 @@ exercised by every `~func` model and claimed by none. `relation-window-function`
 uses a ModelJoin association but does not tag it (its free-form `tags:` say
 `modeljoin`, so the omission is in `features:` only).
 
-**(d) One descriptor is not discovered at all.**
-`relational-emit-models/relational-service-with-join.yaml` is missing the `.emit`
-infix. `EMITModelDiscovery.EMIT_YAML_SUFFIX` is `".emit.yaml"`, so the file is
-skipped silently — its four `.pure` sources under
-`relational-service-with-join/` never parse, compile, or execute. Its `features:`
-list also uses the pre-taxonomy unqualified form (`class`, `association`,
-`service`, …) rather than `domain:capability`, which is consistent with it never
-having been loaded. This is a dead test, not a passing one.
+**(d) One descriptor was not discovered at all.**
+`relational-emit-models/relational-service-with-join.yaml` was missing the `.emit`
+infix. `EMITModelDiscovery.EMIT_YAML_SUFFIX` is `".emit.yaml"`, so the file was
+skipped silently — its four `.pure` sources under `relational-service-with-join/`
+never parsed, compiled, or executed, and its `features:` list still used the
+pre-taxonomy unqualified form (`class`, `association`, `service`, …). §3.0 renamed
+it to `.emit.yaml` and converted its features to `domain:capability` form. On its
+first-ever execution it discovered, parsed, compiled, ran its service test suite,
+and generated a plan — all green (the `RelationalEMITTests` count rose 178 → 186,
+descriptors 24 → 25), so no source repair was needed.
 
 ---
 
@@ -412,11 +435,15 @@ those are tagging omissions to fix in §3.0, not redundant tests. `.pure` author
 Complexity is derived mechanically (distinct non-scaffolding domains: 1–2 basic,
 3–4 intermediate, 5+ advanced).
 
-### 3.0 Metadata normalization → `legend-engine-xt-relationalStore-emit`
+### 3.0 Metadata normalization → `legend-engine-xt-relationalStore-emit` — **DONE**
 
-No new `.pure` sources and no new tests — this is a metadata-only pass that makes
-§2 true and machine-checkable. It should land **before** the next authoring batch,
-while there are only 22 relation descriptors to touch. Details in §2.10.
+No new `.pure` sources and no new tests — this was a metadata-only pass that makes
+§2 true and machine-checkable. **Applied.** All 22 relation descriptors were
+re-tagged, three new §6.2 entries were registered (`mapping:relation-filter`,
+`mapping:relation-group-by`, `mapping:relation-xstore-association`), and the dead
+descriptor was revived (§2.10(d)). Both suites stayed green — `RelationEMITTests`
+211/211 (unchanged), `RelationalEMITTests` 186/186 (up from 178, +8 from the revived
+descriptor). Details and findings in §2.10.
 
 | Item | Work |
 |---|---|
@@ -499,22 +526,32 @@ Both go in `relation-emit-models/` and can reuse `relation-shared-*`.
 
 | Proposed test | Closes | Feature set (non-scaffolding) |
 |---|---|---|
-| `relation-primary-key` | `mapping:relation-primary-key` | `execution:{data-element,test-data}`, `grammar:function`, `mapping:relation-primary-key` |
-| `relation-binding-transformer` | `mapping:relation-binding-transformer` | `execution:{data-element,test-data,binding,external-format}`, `grammar:function`, `mapping:relation-binding-transformer` |
+| `relation-primary-key` — **DONE** | `mapping:relation-primary-key` | `execution:{data-element,test-data}`, `grammar:function`, `mapping:relation-primary-key` |
+| `relation-binding-transformer` — **deferred to §3.7** | `mapping:relation-binding-transformer` | `execution:{data-element,test-data,binding,external-format}`, `grammar:function`, `mapping:relation-binding-transformer` |
 
-> `~primaryKey` here is the **relation** form — `~primaryKey: ID` or
-> `~primaryKey: [ID, NAME]`, a colon followed by one or more bare column
-> identifiers (grammar rule `primaryKey`). It is *not* the relational
-> `~primaryKey ([db]Table.COL)` form, which `relation-relational-union` and
-> `relation-mixed-association-chain` already use on their **relational** set
-> implementations. Those two models are why a naive grep suggests coverage.
+> `~primaryKey` here is the **relation** form — `~primaryKey: [ID]` or
+> `~primaryKey: [ID, LAST_NAME]`, a colon followed by a bracketed list of bare
+> column identifiers (grammar rule `primaryKey`), resolved at compile time against
+> the `~func`'s RelationType. It is *not* the relational `~primaryKey ([db]Table.COL)`
+> form, which `relation-relational-union` and `relation-mixed-association-chain`
+> already use on their **relational** set implementations. `relation-primary-key`
+> landed with two mappings exercising the single- and composite-column forms
+> (RelationEMITTests 211 → 221).
 >
-> `relation-binding-transformer` (grammar rule `bindingTransformer`,
-> `Binding <qualifiedName>:` before a property RHS) doubles as external-format
-> coverage — it would close `execution:binding` and `execution:external-format`
-> from §2.6 as well, if the relational module's classpath carries the binding
-> extension. **Verify that first**; if it does not, this test belongs with the
-> §3.7 external-format batch instead, and only the `~primaryKey` test lands here.
+> **`relation-binding-transformer` — verified, deferred to §3.7.** The gate was
+> whether the module classpath carries a binding/external-format extension. It
+> does — `legend-engine-xt-json-model` registers `JsonExternalFormatExtension` via
+> SPI, alongside `legend-engine-external-format-core` and the JSON runtime
+> functions. But two things push this test to the §3.7 external-format batch
+> rather than here: (1) that extension is JSON **Schema** (schema/model generation),
+> so a working transformer needs a `SchemaSet` + `Binding` + a JSON-string source
+> column + execution-time deserialization — external-format authoring, not a quick
+> relation-suite add; and (2) there is **no relation-form (`~func`)
+> `bindingTransformer` example anywhere in the repo** to mirror — every
+> `Binding <qn>: COLUMN` occurrence is on a *relational* (classic) set
+> implementation. Landing it blind here risks a rabbit hole; §3.7 owns the
+> external-format dependency footprint and should carry it. Only `relation-primary-key`
+> landed in B′.
 
 ### 3.2 Relational store features → `legend-engine-xt-relationalStore-emit`
 
@@ -636,11 +673,20 @@ for XML / Avro as needed).
 | `external-format-schema-set` | `execution:schema-set`, `execution:external-format` | `execution:{schema-set,external-format}` |
 | `external-format-binding` | `execution:binding` | `execution:{binding,external-format,schema-set}` |
 | `external-format-service-binding` | `execution:binding` + service round-trip | `execution:{binding,external-format,service,service-test}` |
+| `relation-binding-transformer` (routed from §3.1b) | `mapping:relation-binding-transformer`, `execution:{binding,external-format}` | `execution:{data-element,test-data,binding,external-format}`, `grammar:function`, `mapping:relation-binding-transformer` |
 
 > `service-with-binding` (existing) uses `execution:external-format-binding`;
 > the taxonomy also has the distinct `execution:binding` and
 > `execution:external-format` / `execution:schema-set` tags, which are the true
 > gaps here.
+>
+> `relation-binding-transformer` was scoped to B′ (§3.1b) but moved here: the
+> relation `Binding <qn>:` transformer needs a `SchemaSet` + `Binding` + a
+> JSON-string source column + execution-time deserialization, and no relation-form
+> example exists to mirror — external-format work best owned by this batch, on a
+> module whose classpath is built for it. It stays in `relation-emit-models/` if
+> the chosen host is `legend-engine-xt-relationalStore-emit` with the needed
+> external-format deps added; otherwise it lands in the format's own `-emit` module.
 
 ### 3.8 Other stores → new store `-emit` modules
 
@@ -687,9 +733,9 @@ the largest gaps; later phases are gated on standing up modules.
 |---|---|---|---|---|
 | **A** | §3.1 Relational mapping features (17 tests — **done**) | No | 19 capabilities | Low — existing classpath, reuse shared domain |
 | **A′** | Relation-function mappings (22 tests — **done**, landed separately) | No | 8 mapping + 5 milestoning | — delivered outside this plan |
-| **A″** | §3.0 Metadata normalization (**0 tests**, metadata only) | No | makes 13 already-covered capabilities visible | Low — but do it **first** |
+| **A″** | §3.0 Metadata normalization (**0 tests**, metadata only — **done**) | No | made 13 already-covered capabilities visible + added 4 newly-covered (`grammar:nested-association`, `mapping:relation-{filter,group-by,xstore-association}`) + revived the dead descriptor | Low — done first |
 | **B** | §3.2 Relational store features (8 tests) | No | 8 capabilities | Low |
-| **B′** | §3.1b Relation-function gaps (2 tests) | No | 2 mapping (+2 execution if binding is on the classpath) | Low |
+| **B′** | §3.1b Relation-function gaps (1 of 2 tests — `relation-primary-key` **done**; `relation-binding-transformer` moved to §3.7/Phase G) | No | 1 mapping (`mapping:relation-primary-key`) | Low |
 | **C** | §3.3 Milestoning (2–3 tests, rescoped from 4) | No | 2 capabilities + table-backed milestoning path | Low–Med — needs temporal query authoring |
 | **D** | §3.4 Grammar + M2M (11 tests) | `legend-engine-emit-m2m` | 6 grammar + 4 mapping | Med — 1 module |
 | **E** | §3.5 Service shapes (5 tests) | `legend-engine-xt-service-emit` | 3 execution + legacy paths | Med — 1 module |
@@ -743,21 +789,22 @@ Any genuinely new capability discovered while authoring must be added to
 
 ## 5. Summary
 
-- **66 of 105** taxonomy capabilities have a distributed example today, up from
+- **70 of 108** taxonomy capabilities have a distributed example today, up from
   31 of 93. Phase A closed 19; the separately-landed relation-function batch
-  closed 13 more and added 12 capabilities to the taxonomy in the process.
-- Of the 39 uncovered, **two are not real targets** —
+  closed 13 more and added 12 capabilities to the taxonomy; §3.0 then added 3 more
+  (all immediately covered) and made 14 already-covered-but-mistagged capabilities
+  machine-visible.
+- Of the 38 uncovered, **two are not real targets** —
   `execution:model-generation` has no implementation (§2.9) and
   `mapping:relational-literal-list` is blocked by an engine defect (note 2 under
-  §3.1) — leaving **37 real gaps**.
-- **Mapping is no longer the weak domain** (27/37). The concentrations are now
+  §3.1) — leaving **36 real gaps**.
+- **Mapping is no longer the weak domain** (30/40). The concentrations are now
   **store (3/13, untouched)** and **execution (5/17, mostly module-gated)**.
   Milestoning is 5/7 rather than 0/7.
-- **§3.0 is the highest-priority item and adds no tests.** Thirteen capabilities
-  are covered by passing tests but invisible to §2 because of off-taxonomy tags;
-  one descriptor (`relational-service-with-join.yaml`) does not run at all
-  because its filename lacks the `.emit` infix. Normalizing now, at 46
-  descriptors, is far cheaper than after Phases B–J.
+- **§3.0 (done) added no tests** but was the highest-priority item: fourteen
+  capabilities were covered by passing tests yet invisible to §2 because of
+  off-taxonomy tags, and one descriptor (`relational-service-with-join.yaml`) did
+  not run at all because its filename lacked the `.emit` infix. Both are now fixed.
 - **Phases B, B′, and C (12–13 tests) need no new modules** and should land next
   — §3.2 relational store features is the largest remaining no-new-module batch.
 - Every real feature has a distributed example at the end of Phase I; the
