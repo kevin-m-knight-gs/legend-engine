@@ -30,10 +30,11 @@ roots. Shared-dependency bundles (`relational-shared-domain`,
 
 ### 1.1 `legend-engine-xt-relationalStore-emit` — `relational-emit-models/`
 
-Driven by `RelationalEMITTests`. 25 descriptors, 186 dynamic tests. The eight
-below predate the Phase A batch; the 17 added by Phase A are listed in §3.1.
-(`relational-service-with-join` was dead until §3.0 renamed it to `.emit.yaml`;
-it now discovers, runs, and passes — see §2.10(d).)
+Driven by `RelationalEMITTests`. 32 descriptors, 232 dynamic tests. The eight
+below predate the Phase A batch; the 17 added by Phase A are listed in §3.1; the
+7 added by Phase B (a shared two-schema store bundle + 6 store-feature tests) are
+in §3.2. (`relational-service-with-join` was dead until §3.0 renamed it to
+`.emit.yaml`; it now discovers, runs, and passes — see §2.10(d).)
 
 | Descriptor | Non-scaffolding features | Complexity |
 |---|---|---|
@@ -223,23 +224,23 @@ while normalizing the relation batch.
 > **not** `mapping:relational-association-implementation`. Phase A's
 > `relational-association-implementation` now covers that capability directly.
 
-### 2.4 Store — 3 / 13 covered
+### 2.4 Store — 9 / 13 covered (2 out-of-scope — §3.2)
 
 | Capability | Status |
 |---|---|
 | `store:relational-filter` | ✅ |
 | `store:relational-inner-join` | ✅ |
 | `store:relational-multi-table` | ✅ |
-| `store:relational-cross-schema` | ❌ |
-| `store:relational-cross-table-filter` | ❌ |
-| `store:relational-dyna-function` | ❌ |
-| `store:relational-inline-view` | ❌ |
-| `store:relational-left-outer-join` | ❌ |
-| `store:relational-nested-join` | ❌ |
-| `store:relational-outer-join` | ❌ |
-| `store:relational-right-outer-join` | ❌ |
-| `store:service-store` | ❌ |
-| `store:flat-data-store` | ❌ |
+| `store:relational-cross-schema` | ✅ Phase B (`relational-cross-schema`) |
+| `store:relational-cross-table-filter` | ✅ Phase B (`relational-cross-table-filter`) |
+| `store:relational-dyna-function` | ✅ Phase B (`relational-dyna-function`) |
+| `store:relational-inline-view` | ✅ Phase B (`relational-inline-view`, `relational-dyna-function`) |
+| `store:relational-left-outer-join` | ✅ Phase B (`relational-left-outer-join`) |
+| `store:relational-nested-join` | ✅ Phase B (`relational-nested-join`) |
+| `store:relational-outer-join` | ⛔ not a real classic-store capability — only INNER/OUTER exist (§3.2) |
+| `store:relational-right-outer-join` | ⛔ not a real classic-store capability — only INNER/OUTER exist (§3.2) |
+| `store:service-store` | ❌ (needs new module — §3.8) |
+| `store:flat-data-store` | ❌ (needs new module — §3.8) |
 
 ### 2.5 Milestoning — 5 / 7 covered
 
@@ -300,11 +301,11 @@ opportunities here are combination-level only (see §3.4) and are low priority.
 | Scaffolding | 9 / 9 | 7 / 7 |
 | Grammar | 6 / 10 | 3 / 10 |
 | Mapping | 31 / 40 | 1 / 27 |
-| Store | 3 / 13 | 3 / 13 |
+| Store | 9 / 13 (2 out-of-scope — §3.2) | 3 / 13 |
 | Milestoning | 5 / 7 | 0 / 7 |
 | Execution | 5 / 17 (1 out-of-scope — §2.9) | 5 / 17 |
 | Persistence | 12 / 12 | 12 / 12 |
-| **Total** | **71 / 108** | **31 / 93** |
+| **Total** | **77 / 108** | **31 / 93** |
 
 Totals grew because the relation-function work added 12 real capabilities to the
 taxonomy (§6.2 of `emit.md`) as well as covering them, and §3.0 added 3 more
@@ -316,11 +317,13 @@ The picture has changed substantially. **Mapping is no longer the hole** — it 
 from 1/27 to 30/40 across Phase A and the relation batch. **Milestoning is nearly
 closed** rather than untouched. The remaining concentrations are now:
 
-- **Store — 3 / 13, entirely untouched.** The join-flavour and store-shape long
-  tail (§3.2) is the single largest contiguous gap left, and it needs no new
-  module. This is the highest-value next batch.
-- **Execution — 5 / 17.** Gated on new modules for the most part (§3.5–§3.9).
-- **Grammar — 5 / 10** and the M2M corner of mapping, both waiting on the
+- **Store — 9 / 13 (Phase B done).** All six authorable join/store-shape features
+  landed (§3.2); the two remaining real gaps (`service-store`, `flat-data-store`)
+  need new modules (§3.8), and right-/full-outer join are out of scope (no
+  classic-store grammar). Store is no longer a concentration.
+- **Execution — 5 / 17.** Gated on new modules for the most part (§3.5–§3.9). Now
+  the largest concentration.
+- **Grammar — 6 / 10** and the M2M corner of mapping, both waiting on the
   `legend-engine-emit-m2m` module (§3.4).
 
 ### 2.9 Out of scope: model generation (no real feature to test)
@@ -553,16 +556,30 @@ Both go in `relation-emit-models/` and can reuse `relation-shared-*`.
 > external-format dependency footprint and should carry it. Only `relation-primary-key`
 > landed in B′.
 
-### 3.2 Relational store features → `legend-engine-xt-relationalStore-emit`
+### 3.2 Relational store features → `legend-engine-xt-relationalStore-emit` — **DONE (6 of 8; 2 not real)**
 
-Also no new module. A shared multi-schema / multi-join store can be added as a
-reusable dependency (like `relational-shared-firm-db`) and consumed by several.
+Also no new module. A shared multi-schema / multi-join store
+(`relational-shared-joins` — Employee/Department/Sale domain + a two-schema
+`demo::store::JoinsDB` with an intra-schema `Emp_Dept` join, a cross-schema
+`Emp_Sale` join, and a `NycDeptFilter`) was added as a reusable dependency (like
+`relational-shared-firm-db`) and consumed by the join/filter tests. All six
+authorable tests landed and pass (`RelationalEMITTests` 186 → 232).
+
+**Rescoped from 8 tests to 6.** Verifying the grammar first (working rule 1)
+showed the classic relational store supports **only `INNER` and `OUTER`** join
+types (`RelationalParseTreeWalker.JOIN_TYPES = {"INNER","OUTER"}`); `OUTER` from
+the main side is a *left* outer join. There is no `RIGHT` or `FULL` keyword in
+the classic store/mapping path — `RIGHT_OUTER`/`FULL_OUTER` exist only in the
+relation/TDS `->join(JoinKind…)` function (query-function territory, PCT's job),
+not as a `store:relational-*` structural feature. So `store:relational-right-outer-join`
+and `store:relational-outer-join` (full) are **not real classic-store capabilities**
+— treated like `mapping:relational-literal-list` (⛔ in §2.4), not authored here.
 
 | Proposed test | Closes | Feature set (non-scaffolding) |
 |---|---|---|
 | `relational-left-outer-join` | `store:relational-left-outer-join` | `execution:{data-element,test-data}`, `grammar:association`, `store:relational-left-outer-join` |
-| `relational-right-outer-join` | `store:relational-right-outer-join` | `execution:{data-element,test-data}`, `grammar:association`, `store:relational-right-outer-join` |
-| `relational-outer-join` | `store:relational-outer-join` | `execution:{data-element,test-data}`, `grammar:association`, `store:relational-outer-join` |
+| ~~`relational-right-outer-join`~~ | — ⛔ not a real classic-store capability (INNER/OUTER only) | — |
+| ~~`relational-outer-join`~~ | — ⛔ not a real classic-store capability (INNER/OUTER only) | — |
 | `relational-nested-join` | `store:relational-nested-join` | `execution:{data-element,test-data}`, `grammar:nested-association`, `store:relational-nested-join` |
 | `relational-cross-schema` | `store:relational-cross-schema` | `execution:{data-element,test-data}`, `store:{relational-cross-schema,relational-inner-join}` |
 | `relational-cross-table-filter` | `store:relational-cross-table-filter` | `execution:{data-element,test-data}`, `store:{relational-cross-table-filter,relational-inner-join}` |
@@ -734,7 +751,7 @@ the largest gaps; later phases are gated on standing up modules.
 | **A** | §3.1 Relational mapping features (17 tests — **done**) | No | 19 capabilities | Low — existing classpath, reuse shared domain |
 | **A′** | Relation-function mappings (22 tests — **done**, landed separately) | No | 8 mapping + 5 milestoning | — delivered outside this plan |
 | **A″** | §3.0 Metadata normalization (**0 tests**, metadata only — **done**) | No | made 13 already-covered capabilities visible + added 4 newly-covered (`grammar:nested-association`, `mapping:relation-{filter,group-by,xstore-association}`) + revived the dead descriptor | Low — done first |
-| **B** | §3.2 Relational store features (8 tests) | No | 8 capabilities | Low |
+| **B** | §3.2 Relational store features (6 of 8 tests — **done**; right-/full-outer not real) | No | 6 store capabilities (cross-schema, cross-table-filter, dyna-function, inline-view, left-outer-join, nested-join) | Low |
 | **B′** | §3.1b Relation-function gaps (1 of 2 tests — `relation-primary-key` **done**; `relation-binding-transformer` moved to §3.7/Phase G) | No | 1 mapping (`mapping:relation-primary-key`) | Low |
 | **C** | §3.3 Milestoning (2–3 tests, rescoped from 4) | No | 2 capabilities + table-backed milestoning path | Low–Med — needs temporal query authoring |
 | **D** | §3.4 Grammar + M2M (11 tests) | `legend-engine-emit-m2m` | 6 grammar + 4 mapping | Med — 1 module |
@@ -789,24 +806,26 @@ Any genuinely new capability discovered while authoring must be added to
 
 ## 5. Summary
 
-- **70 of 108** taxonomy capabilities have a distributed example today, up from
+- **77 of 108** taxonomy capabilities have a distributed example today, up from
   31 of 93. Phase A closed 19; the separately-landed relation-function batch
   closed 13 more and added 12 capabilities to the taxonomy; §3.0 then added 3 more
   (all immediately covered) and made 14 already-covered-but-mistagged capabilities
-  machine-visible.
-- Of the 38 uncovered, **two are not real targets** —
-  `execution:model-generation` has no implementation (§2.9) and
+  machine-visible; Phase B closed 6 store features and Phase B′ 1 relation-mapping.
+- Of the 31 uncovered, **four are not real targets** —
+  `execution:model-generation` has no implementation (§2.9),
   `mapping:relational-literal-list` is blocked by an engine defect (note 2 under
-  §3.1) — leaving **36 real gaps**.
-- **Mapping is no longer the weak domain** (30/40). The concentrations are now
-  **store (3/13, untouched)** and **execution (5/17, mostly module-gated)**.
-  Milestoning is 5/7 rather than 0/7.
+  §3.1), and `store:relational-{right-outer,outer}-join` have no classic-store
+  grammar (§3.2) — leaving **27 real gaps**.
+- **Mapping (31/40) and store (9/13) are no longer weak domains.** The concentration
+  is now **execution (5/17, mostly module-gated)**; grammar is 6/10 and milestoning
+  5/7.
 - **§3.0 (done) added no tests** but was the highest-priority item: fourteen
   capabilities were covered by passing tests yet invisible to §2 because of
   off-taxonomy tags, and one descriptor (`relational-service-with-join.yaml`) did
   not run at all because its filename lacked the `.emit` infix. Both are now fixed.
-- **Phases B, B′, and C (12–13 tests) need no new modules** and should land next
-  — §3.2 relational store features is the largest remaining no-new-module batch.
+- **Phases B and B′ are done** (6 store tests + 1 relation-mapping test, no new
+  modules). **Phase C (§3.3 milestoning, 2–3 tests) is the last no-new-module batch**
+  and should land next; everything after is gated on standing up modules (D–I).
 - Every real feature has a distributed example at the end of Phase I; the
   remaining work is combination-level and incremental. Model generation is
   revisited only if a real extension ships.
