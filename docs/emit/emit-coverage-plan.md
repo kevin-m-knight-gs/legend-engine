@@ -30,11 +30,12 @@ roots. Shared-dependency bundles (`relational-shared-domain`,
 
 ### 1.1 `legend-engine-xt-relationalStore-emit` — `relational-emit-models/`
 
-Driven by `RelationalEMITTests`. 32 descriptors, 232 dynamic tests. The eight
+Driven by `RelationalEMITTests`. 33 descriptors, 239 dynamic tests. The eight
 below predate the Phase A batch; the 17 added by Phase A are listed in §3.1; the
 7 added by Phase B (a shared two-schema store bundle + 6 store-feature tests) are
-in §3.2. (`relational-service-with-join` was dead until §3.0 renamed it to
-`.emit.yaml`; it now discovers, runs, and passes — see §2.10(d).)
+in §3.2; Phase C added `milestoning-bitemporal` (§3.3). (`relational-service-with-join`
+was dead until §3.0 renamed it to `.emit.yaml`; it now discovers, runs, and
+passes — see §2.10(d).)
 
 | Descriptor | Non-scaffolding features | Complexity |
 |---|---|---|
@@ -242,7 +243,7 @@ while normalizing the relation batch.
 | `store:service-store` | ❌ (needs new module — §3.8) |
 | `store:flat-data-store` | ❌ (needs new module — §3.8) |
 
-### 2.5 Milestoning — 5 / 7 covered
+### 2.5 Milestoning — 6 / 7 covered (1 out-of-scope — §3.3)
 
 | Capability | Status |
 |---|---|
@@ -250,9 +251,9 @@ while normalizing the relation batch.
 | `milestoning:processing-temporal` | ✅ `relation-milestoning`, `relation-milestoning-modelJoin-asymmetric` |
 | `milestoning:point-in-time-query` | ✅ `relation-milestoning` (`all(%date)`), asymmetric (independent as-of dates per side) |
 | `milestoning:all-versions-query` | ✅ `relation-milestoning` (`allVersions()`) |
-| `milestoning:milestoning` | ✅ both of the above |
-| `milestoning:bi-temporal` | ❌ |
-| `milestoning:all-versions-in-range-query` | ❌ |
+| `milestoning:milestoning` | ✅ both of the above; also `milestoning-bitemporal` |
+| `milestoning:bi-temporal` | ✅ Phase C (`milestoning-bitemporal`, table-backed `<<temporal.bitemporal>>` + `all(processingDate, businessDate)`) |
+| `milestoning:all-versions-in-range-query` | ⛔ not supported in the Legend/Studio grammar — `DomainParseTreeWalker.allOrFunction` explicitly rejects `.allVersionsInRange(...)` (§3.3) |
 
 > This is the *class/relational* milestoning domain (temporal classes + temporal
 > query functions), distinct from the persistence temporal capabilities in §2.7
@@ -302,10 +303,10 @@ opportunities here are combination-level only (see §3.4) and are low priority.
 | Grammar | 6 / 10 | 3 / 10 |
 | Mapping | 31 / 40 | 1 / 27 |
 | Store | 9 / 13 (2 out-of-scope — §3.2) | 3 / 13 |
-| Milestoning | 5 / 7 | 0 / 7 |
+| Milestoning | 6 / 7 (1 out-of-scope — §3.3) | 0 / 7 |
 | Execution | 5 / 17 (1 out-of-scope — §2.9) | 5 / 17 |
 | Persistence | 12 / 12 | 12 / 12 |
-| **Total** | **77 / 108** | **31 / 93** |
+| **Total** | **78 / 108** | **31 / 93** |
 
 Totals grew because the relation-function work added 12 real capabilities to the
 taxonomy (§6.2 of `emit.md`) as well as covering them, and §3.0 added 3 more
@@ -586,28 +587,35 @@ and `store:relational-outer-join` (full) are **not real classic-store capabiliti
 | `relational-inline-view` | `store:relational-inline-view` | `execution:{data-element,test-data}`, `store:relational-inline-view` |
 | `relational-dyna-function` | `store:relational-dyna-function` | `execution:{data-element,test-data}`, `store:relational-dyna-function` |
 
-### 3.3 Class/relational milestoning → `legend-engine-xt-relationalStore-emit`
+### 3.3 Class/relational milestoning → `legend-engine-xt-relationalStore-emit` — **DONE (1 of 2; 1 not supported)**
 
-**Rescoped from 4 tests to 2.** The relation batch already covers
+**Rescoped from 4 tests to 2, then to 1.** The relation batch already covers
 business-temporal, processing-temporal, point-in-time query, all-versions query,
-and the generic marker (§2.5) — it just tags them `grammar:milestoning`, so §3.0
-must land for that coverage to be visible. Only two capabilities remain.
+and the generic marker (§2.5); §3.0 made that visible. Two capabilities remained,
+but verifying the grammar (working rule 1) showed only one is authorable.
 
 | Proposed test | Closes | Feature set (non-scaffolding) |
 |---|---|---|
-| `milestoning-bitemporal` | `milestoning:bi-temporal` | `execution:{data-element,test-data}`, `milestoning:{bi-temporal,point-in-time-query,milestoning}` |
-| `milestoning-all-versions-in-range` | `milestoning:all-versions-in-range-query` | `execution:{data-element,test-data}`, `milestoning:{business-temporal,all-versions-in-range-query,milestoning}` |
+| `milestoning-bitemporal` — **DONE** | `milestoning:bi-temporal` | `execution:{data-element,test-data}`, `milestoning:{bi-temporal,point-in-time-query,milestoning}` |
+| ~~`milestoning-all-versions-in-range`~~ | — ⛔ `.allVersionsInRange(...)` not supported in the Legend grammar | — |
 
-> Both should be authored against **relational** (table-backed) mappings in
-> `relational-emit-models/`, not relation-function mappings. That is deliberate
-> duplication of concern rather than redundancy: milestoning is currently proven
-> only over `~func` sources, so the table-backed milestoning path — a different
-> code path through the router — has no EMIT coverage at all. Consider a third
-> descriptor, `relational-milestoning-business-temporal`, purely to establish
-> that path, even though the *capability* tags would duplicate the relation
-> models' (subset/superset overlap is explicitly allowed by
-> `emit-authoring.md` §11.2; only exact set matches are duplicates, and the
-> `stores`/scaffolding tags differ here anyway).
+> `milestoning-bitemporal` was authored against a **relational** (table-backed)
+> mapping in `relational-emit-models/`, not a relation-function mapping — deliberate
+> duplication of concern: milestoning was previously proven only over `~func`
+> sources, so this establishes the table-backed milestoning router path. The
+> bitemporal PRODUCT table declares `milestoning ( business(...), processing(...) )`
+> (comma-separated specs), the class carries `<<temporal.bitemporal>>`, and the
+> query is `all(processingDate, businessDate)`. That single table-backed test also
+> covers the business/processing/point-in-time path over the classic store, so no
+> separate `relational-milestoning-business-temporal` descriptor is needed.
+>
+> **`milestoning:all-versions-in-range-query` is not EMIT-testable.**
+> `.allVersionsInRange(...)` parses in the M3 grammar but the Legend/Studio grammar
+> walker (`DomainParseTreeWalker.allOrFunction`) explicitly throws "… is not
+> supported" for it (only `all()`, `allVersions()`, `all(%d)`, `all(%d1,%d2)` are
+> honoured). Same category as right-/full-outer join (§3.2) and
+> `mapping:relational-literal-list` — a taxonomy entry with no expressible
+> Legend-grammar construct. Marked ⛔ in §2.5.
 
 ### 3.4 Grammar-only + M2M mapping → new `legend-engine-emit-m2m`
 
@@ -753,7 +761,7 @@ the largest gaps; later phases are gated on standing up modules.
 | **A″** | §3.0 Metadata normalization (**0 tests**, metadata only — **done**) | No | made 13 already-covered capabilities visible + added 4 newly-covered (`grammar:nested-association`, `mapping:relation-{filter,group-by,xstore-association}`) + revived the dead descriptor | Low — done first |
 | **B** | §3.2 Relational store features (6 of 8 tests — **done**; right-/full-outer not real) | No | 6 store capabilities (cross-schema, cross-table-filter, dyna-function, inline-view, left-outer-join, nested-join) | Low |
 | **B′** | §3.1b Relation-function gaps (1 of 2 tests — `relation-primary-key` **done**; `relation-binding-transformer` moved to §3.7/Phase G) | No | 1 mapping (`mapping:relation-primary-key`) | Low |
-| **C** | §3.3 Milestoning (2–3 tests, rescoped from 4) | No | 2 capabilities + table-backed milestoning path | Low–Med — needs temporal query authoring |
+| **C** | §3.3 Milestoning (1 test — **done**; all-versions-in-range not supported in Legend grammar) | No | `milestoning:bi-temporal` + table-backed milestoning path | Low–Med |
 | **D** | §3.4 Grammar + M2M (11 tests) | `legend-engine-emit-m2m` | 6 grammar + 4 mapping | Med — 1 module |
 | **E** | §3.5 Service shapes (5 tests) | `legend-engine-xt-service-emit` | 3 execution + legacy paths | Med — 1 module |
 | **F** | §3.6 File generation (3 tests) | `legend-engine-xt-generation-emit` | real file generation (Avro/Protobuf/JSON Schema) | Med |
@@ -806,26 +814,30 @@ Any genuinely new capability discovered while authoring must be added to
 
 ## 5. Summary
 
-- **77 of 108** taxonomy capabilities have a distributed example today, up from
+- **78 of 108** taxonomy capabilities have a distributed example today, up from
   31 of 93. Phase A closed 19; the separately-landed relation-function batch
   closed 13 more and added 12 capabilities to the taxonomy; §3.0 then added 3 more
   (all immediately covered) and made 14 already-covered-but-mistagged capabilities
-  machine-visible; Phase B closed 6 store features and Phase B′ 1 relation-mapping.
-- Of the 31 uncovered, **four are not real targets** —
+  machine-visible; Phase B closed 6 store features, Phase B′ 1 relation-mapping, and
+  Phase C 1 milestoning.
+- Of the 30 uncovered, **five are not real targets** —
   `execution:model-generation` has no implementation (§2.9),
   `mapping:relational-literal-list` is blocked by an engine defect (note 2 under
-  §3.1), and `store:relational-{right-outer,outer}-join` have no classic-store
-  grammar (§3.2) — leaving **27 real gaps**.
+  §3.1), `store:relational-{right-outer,outer}-join` have no classic-store
+  grammar (§3.2), and `milestoning:all-versions-in-range-query` is rejected by the
+  Legend grammar (§3.3) — leaving **25 real gaps**.
 - **Mapping (31/40) and store (9/13) are no longer weak domains.** The concentration
   is now **execution (5/17, mostly module-gated)**; grammar is 6/10 and milestoning
-  5/7.
+  6/7 (all-versions-in-range out of scope).
 - **§3.0 (done) added no tests** but was the highest-priority item: fourteen
   capabilities were covered by passing tests yet invisible to §2 because of
   off-taxonomy tags, and one descriptor (`relational-service-with-join.yaml`) did
   not run at all because its filename lacked the `.emit` infix. Both are now fixed.
-- **Phases B and B′ are done** (6 store tests + 1 relation-mapping test, no new
-  modules). **Phase C (§3.3 milestoning, 2–3 tests) is the last no-new-module batch**
-  and should land next; everything after is gated on standing up modules (D–I).
+- **Phases B, B′, and C are done** (6 store tests + 1 relation-mapping + 1
+  milestoning, no new modules). **The no-new-module work is now exhausted** — every
+  remaining real gap needs a new `-emit` module (D–I: M2M, service shapes, file
+  generation, external format, other stores, function activators), or is a
+  cross-feature combo (J).
 - Every real feature has a distributed example at the end of Phase I; the
   remaining work is combination-level and incremental. Model generation is
   revisited only if a real extension ships.
