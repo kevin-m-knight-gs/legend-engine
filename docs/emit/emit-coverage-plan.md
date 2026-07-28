@@ -22,9 +22,10 @@ real-extension example**.
 
 ## 1. Inventory of Existing (Distributed) EMIT Tests
 
-**Fifty-six** distributed descriptors exist across three modules — 46 of them in
-the relational module, which now hosts two independent suites over two resource
-roots. Shared-dependency bundles (`relational-shared-domain`,
+**Seventy-six** distributed descriptors exist across four modules — 56 of them in
+the relational module and 10 in the core-feature module added by Phase D, both of
+which host two independent suites over two resource roots. Shared-dependency bundles
+(`relational-shared-domain`,
 `relational-shared-firm-db`, `relation-shared-domain`, `relation-shared-db`,
 `relation-shared-data`) are reusable and only run parse + compile on their own.
 
@@ -103,20 +104,48 @@ they matter because the coverage matrix is computed from metadata.
 | `persistence-delta-bitemporal` | `persistence:{bitemporal, delta, persistence, service-output-target}` | basic |
 | `persistence-graphfetch-output` | `persistence:{bitemporal, delete-indicator, delta, graph-fetch-service-output, persistence, service-output-target}` | basic |
 
-### 1.5 Test-hosting modules that exist today
+### 1.5 `legend-engine-core/legend-engine-core-emit-tests` (core-feature)
 
-Only three modules currently host distributed EMIT tests:
+10 descriptors, 52 dynamic tests, all added by Phase D (§3.4), split across two
+independently-runnable suites by subject:
+
+- `grammar-emit-models/` → `GrammarEMITTests` — 7 language-construct models
+  (parse + compile; no store, no mapping)
+- `m2m-emit-models/` → `M2MEMITTests` — 3 model-to-model mappings whose embedded test
+  suites execute against the in-memory store
+
+| Descriptor | Non-scaffolding features | Complexity |
+|---|---|---|
+| `grammar-constraint` | `grammar:constraint` | basic |
+| `grammar-class-inheritance` | `grammar:class-inheritance`, `grammar:derived-property` | basic |
+| `grammar-function` | `grammar:function` | basic |
+| `grammar-measure` | `grammar:measure` | basic |
+| `grammar-profile` | `grammar:association`, `grammar:enumeration`, `grammar:function`, `grammar:profile` | basic |
+| `grammar-qualified-property` | `grammar:enumeration`, `grammar:qualified-property` | basic |
+| `grammar-nested-association` | `grammar:association`, `grammar:derived-property`, `grammar:nested-association` | basic |
+| `m2m-transform` | `execution:test-data`, `mapping:m2m-transform`, `mapping:mapping` | basic |
+| `m2m-derived-source-property` | `execution:test-data`, `grammar:derived-property`, `grammar:qualified-property`, `mapping:m2m-derived-source-property`, `mapping:mapping` | basic |
+| `m2m-enumeration-mapping` | `execution:test-data`, `grammar:enumeration`, `mapping:enumeration-mapping`, `mapping:mapping` | basic |
+
+### 1.6 Test-hosting modules that exist today
+
+Four modules currently host distributed EMIT tests:
 
 - `legend-engine-xt-relationalStore-emit` (two suites: `relational-emit-models/`
   via `RelationalEMITTests`, `relation-emit-models/` via `RelationEMITTests`)
 - `legend-engine-xt-persistence-emit`
+- `legend-engine-core-emit-tests` (core-feature: Pure language constructs + M2M)
 - `legend-engine-emit-tests` (cross-feature)
 
 The authoring guide (`emit-authoring.md` §3.1) references several per-feature
 modules that **do not exist yet** and must be stood up (§9 of that guide) before
 their tests can land:
 
-- `legend-engine-core-emit/legend-engine-emit-m2m` — M2M mapping / grammar-only
+- ~~`legend-engine-core-emit/legend-engine-emit-m2m`~~ — stood up in Phase D as
+  `legend-engine-core/legend-engine-core-emit-tests` (see §3.4); renamed because the
+  batch is majority core-language fixtures rather than M2M, and relocated to a
+  sibling of `legend-engine-core-emit` so a catalog module is not mistaken for one of
+  the four framework modules inside it
 - `legend-engine-xts-service/legend-engine-xt-service-emit` — service shapes
 - `legend-engine-xts-generation/legend-engine-xt-generation-emit` — file/model generation
 - `legend-engine-xts-flatdata/legend-engine-xt-flatdata-emit` — flat-data store
@@ -144,26 +173,31 @@ self-test fixture (no distributed/real-extension example) · **❌** no coverage
 
 Scaffolding is fully exercised.
 
-### 2.2 Grammar — 6 / 10 covered
+### 2.2 Grammar — 10 / 10 covered ✅
 
 | Capability | Status |
 |---|---|
 | `grammar:association` | ✅ |
-| `grammar:class-inheritance` | ✅ Phase A (`relational-{single-table,joined-table}-inheritance`, `relational-{operation-mapping,polymorphic-query}`); also `relation-window-function` (`RankedEmployee extends Employee`) |
+| `grammar:class-inheritance` | ✅ Phase A (`relational-{single-table,joined-table}-inheritance`, `relational-{operation-mapping,polymorphic-query}`); also `relation-window-function` (`RankedEmployee extends Employee`); Phase D `grammar-class-inheritance` isolates the language construct |
 | `grammar:derived-property` | ✅ |
 | `grammar:enumeration` | ✅ |
-| `grammar:function` | ✅ relation suite — tag applied to all 19 executable `~func` models in §3.0 |
-| `grammar:nested-association` | ✅ `relation-modelJoin-chained` (multi-level `firm.departments.staff` traversal) |
-| `grammar:constraint` | ❌ |
-| `grammar:measure` | ❌ |
-| `grammar:profile` | ❌ |
-| `grammar:qualified-property` | ❌ |
+| `grammar:function` | ✅ relation suite — tag applied to all 19 executable `~func` models in §3.0; Phase D `grammar-function` is the first fixture where the function element is the subject rather than a mapping source |
+| `grammar:nested-association` | ✅ `relation-modelJoin-chained` (multi-level `firm.departments.staff` traversal); Phase D `grammar-nested-association` covers the plain-association form |
+| `grammar:constraint` | ✅ Phase D (`grammar-constraint`) |
+| `grammar:measure` | ✅ Phase D (`grammar-measure`) |
+| `grammar:profile` | ✅ Phase D (`grammar-profile`) |
+| `grammar:qualified-property` | ✅ Phase D (`grammar-qualified-property`, `m2m-derived-source-property`) |
+
+The grammar domain is closed. Phase D's seven grammar-only fixtures run parse +
+compile with no store and no mapping, so a regression in a language construct is
+attributable to the construct rather than to the mapping strategy that previously
+happened to carry it.
 
 > `grammar:function` was the second instance of the §2.10 pattern: genuinely
 > exercised by all 19 executable relation models but claimed by none, so it read
 > as a gap. §3.0 applied the tag, and it is now machine-checkable.
 
-### 2.3 Mapping — 31 / 40 covered
+### 2.3 Mapping — 34 / 40 covered (4 out-of-scope — §3.1 note 2, §3.4a)
 
 The relational half of this domain went from 1/27 to 17/27 in Phase A; the
 relation-function half (13 entries, §6.2 of `emit.md`) is new — §3.0 added
@@ -175,7 +209,7 @@ while normalizing the relation batch.
 | Capability | Status |
 |---|---|
 | `mapping:aggregation-aware-mapping` | ✅ Phase A |
-| `mapping:enumeration-mapping` | ✅ |
+| `mapping:enumeration-mapping` | ✅ relational + relation; Phase D `m2m-enumeration-mapping` adds the M2M code path (string- and integer-keyed) |
 | `mapping:mapping-include` | ✅ Phase A + relation (`relation-include`, mis-tagged — §2.10) |
 | `mapping:operation-mapping` | ✅ Phase A |
 | `mapping:relational-association-implementation` | ✅ Phase A |
@@ -193,14 +227,14 @@ while normalizing the relation batch.
 | `mapping:relational-table-alias-column` | ✅ Phase A |
 | `mapping:router-union` | ✅ Phase A |
 | `mapping:store-union` | ✅ Phase A |
-| `mapping:mapping` | ▲ (framework `m2m-passing` / `m2m-mixed` only) |
+| `mapping:mapping` | ✅ Phase D (all three M2M models); previously ▲ framework-only |
+| `mapping:m2m-derived-source-property` | ✅ Phase D (`m2m-derived-source-property`) |
+| `mapping:m2m-transform` | ✅ Phase D (`m2m-transform`) |
 | `mapping:relational-literal-list` | ⛔ blocked by an engine defect — note 2 under §3.1 |
+| `mapping:m2m-local-property` | ⛔ not provable under single-connection M2M test data — §3.4a |
+| `mapping:operation-mapping-merge` | ⛔ not provable under single-connection M2M test data — §3.4a |
+| `mapping:operation-mapping-merge-validation` | ⛔ not provable under single-connection M2M test data — §3.4a |
 | `mapping:cross-store` | ❌ |
-| `mapping:m2m-derived-source-property` | ❌ |
-| `mapping:m2m-local-property` | ❌ |
-| `mapping:m2m-transform` | ❌ |
-| `mapping:operation-mapping-merge` | ❌ (M2M-only — note 1 under §3.1) |
-| `mapping:operation-mapping-merge-validation` | ❌ (M2M-only — note 1 under §3.1) |
 
 **Relation-function mappings**
 
@@ -300,13 +334,13 @@ opportunities here are combination-level only (see §3.4) and are low priority.
 | Domain | Covered / Total | Was (pre-Phase A) |
 |---|---|---|
 | Scaffolding | 9 / 9 | 7 / 7 |
-| Grammar | 6 / 10 | 3 / 10 |
-| Mapping | 31 / 40 | 1 / 27 |
+| Grammar | 10 / 10 | 3 / 10 |
+| Mapping | 34 / 40 (4 out-of-scope — §3.1 note 2, §3.4a) | 1 / 27 |
 | Store | 9 / 13 (2 out-of-scope — §3.2) | 3 / 13 |
 | Milestoning | 6 / 7 (1 out-of-scope — §3.3) | 0 / 7 |
 | Execution | 5 / 17 (1 out-of-scope — §2.9) | 5 / 17 |
 | Persistence | 12 / 12 | 12 / 12 |
-| **Total** | **78 / 108** | **31 / 93** |
+| **Total** | **85 / 108** | **31 / 93** |
 
 Totals grew because the relation-function work added 12 real capabilities to the
 taxonomy (§6.2 of `emit.md`) as well as covering them, and §3.0 added 3 more
@@ -315,17 +349,22 @@ taxonomy (§6.2 of `emit.md`) as well as covering them, and §3.0 added 3 more
 all three immediately covered.
 
 The picture has changed substantially. **Mapping is no longer the hole** — it went
-from 1/27 to 30/40 across Phase A and the relation batch. **Milestoning is nearly
-closed** rather than untouched. The remaining concentrations are now:
+from 1/27 to 34/40 across Phase A, the relation batch and Phase D. **Grammar is
+closed** at 10/10 and **milestoning is nearly closed** rather than untouched. There
+is now exactly one concentration left:
 
+- **Execution — 5 / 17.** Gated on new modules almost entirely (§3.5–§3.9). This is
+  the only remaining concentration.
 - **Store — 9 / 13 (Phase B done).** All six authorable join/store-shape features
   landed (§3.2); the two remaining real gaps (`service-store`, `flat-data-store`)
   need new modules (§3.8), and right-/full-outer join are out of scope (no
-  classic-store grammar). Store is no longer a concentration.
-- **Execution — 5 / 17.** Gated on new modules for the most part (§3.5–§3.9). Now
-  the largest concentration.
-- **Grammar — 6 / 10** and the M2M corner of mapping, both waiting on the
-  `legend-engine-emit-m2m` module (§3.4).
+  classic-store grammar).
+- **Mapping — 34 / 40.** Phase D closed the executable part of the M2M corner. Of
+  the six uncovered, four are out of scope: `mapping:relational-literal-list` (engine
+  defect) and the three §3.4a capabilities that single-connection M2M test data
+  cannot prove. The two real gaps left are `mapping:cross-store` (§3.10) and
+  `mapping:relation-binding-transformer` (§3.7) — and closing the first would also
+  give the §3.4a three a home.
 
 ### 2.9 Out of scope: model generation (no real feature to test)
 
@@ -617,11 +656,44 @@ but verifying the grammar (working rule 1) showed only one is authorable.
 > `mapping:relational-literal-list` — a taxonomy entry with no expressible
 > Legend-grammar construct. Marked ⛔ in §2.5.
 
-### 3.4 Grammar-only + M2M mapping → new `legend-engine-emit-m2m`
+### 3.4 Grammar-only + M2M mapping → new `legend-engine-core-emit-tests` — **DONE (10 of 11; 1 not executable)**
 
-These need only the core compiler + M2M classpath. Stand up
-`legend-engine-core-emit/legend-engine-emit-m2m` (`emit-authoring.md` §9) and
-host both the grammar-only fixtures and the M2M mapping features here.
+These need only the core compiler + M2M classpath. **Applied.** The module was stood
+up as `legend-engine-core/legend-engine-core-emit-tests` — a leaf module and a
+*sibling* of `legend-engine-core-emit`, not a child of it, so a catalog module is not
+mistaken for one of the four framework modules inside that aggregator. All 10
+descriptors that could be made to prove something landed and pass: 52 dynamic tests,
+checkstyle clean.
+
+The name was changed from the originally-proposed `legend-engine-emit-m2m` because
+seven of the ten fixtures are core-language rather than M2M, and the module is
+expected to keep accreting store-free fixtures.
+
+The module hosts two independently-runnable suites over two resource roots, split by
+subject so each area can be run on its own and a failure is attributable to one of
+them (`emit.md` §3.2):
+
+| Root | Suite | Models |
+|---|---|---|
+| `grammar-emit-models/` | `GrammarEMITTests` | 7 language-construct models (parse + compile) |
+| `m2m-emit-models/` | `M2MEMITTests` | 3 model-to-model mappings (executing test suites) |
+
+Both roots are disambiguated, so both needed an explicit `includedRelativeSubpaths`
+entry in `legend-engine-server-http-server`'s pom — see the §5.4 caveat and the
+updated table there.
+
+> **Dependency note.** The seven grammar-only fixtures need nothing beyond the
+> compiler. The four M2M fixtures execute their test suites, which requires the same
+> test-scoped profile `legend-engine-emit` uses for its own m2m bootstrap fixtures:
+> `legend-engine-executionPlan-execution-store-inMemory`,
+> `legend-engine-external-format-core`,
+> `legend-engine-pure-runtime-java-extension-compiled-functions-json` (all core),
+> plus `legend-engine-xt-json-model`, `legend-engine-xt-javaPlatformBinding-pure` and
+> `legend-engine-configuration-plan-generation-serialization` (xts and config). So a
+> module in the core tree does invert the documented `config → xts → core` direction
+> at test scope — copying, not extending, the precedent `legend-engine-emit` already
+> set. A strictly extension-free core module would have to host the grammar fixtures
+> alone and exile the M2M half.
 
 **Grammar-only** (parse + compile; no store, no mapping):
 
@@ -640,10 +712,64 @@ distributed counterpart to the fake-free framework fixtures):
 
 | Proposed test | Closes | Feature set (non-scaffolding) |
 |---|---|---|
-| `m2m-transform` | `mapping:m2m-transform` | `execution:{data-element,test-data}`, `mapping:{mapping,m2m-transform}` |
-| `m2m-local-property` | `mapping:m2m-local-property` | `execution:{data-element,test-data}`, `mapping:{mapping,m2m-local-property}` |
-| `m2m-derived-source-property` | `mapping:m2m-derived-source-property` | `execution:{data-element,test-data}`, `grammar:derived-property`, `mapping:{mapping,m2m-derived-source-property}` |
-| `m2m-enumeration-mapping` | `mapping:enumeration-mapping` (M2M variant) | `execution:{data-element,test-data}`, `grammar:enumeration`, `mapping:{mapping,enumeration-mapping}` |
+| `m2m-transform` | `mapping:m2m-transform` | `execution:test-data`, `mapping:{mapping,m2m-transform}` |
+| ~~`m2m-local-property`~~ | — ⛔ not executable, see §3.4a | — |
+| `m2m-derived-source-property` | `mapping:m2m-derived-source-property` | `execution:test-data`, `grammar:{derived-property,qualified-property}`, `mapping:{mapping,m2m-derived-source-property}` |
+| `m2m-enumeration-mapping` | `mapping:enumeration-mapping` (M2M variant) | `execution:test-data`, `grammar:enumeration`, `mapping:{mapping,enumeration-mapping}` |
+
+The three delivered M2M models embed their test data inline as `ExternalFormat` blocks
+rather than referencing a `Data` element, so they carry `execution:test-data` but not
+`execution:data-element` as originally proposed.
+
+### 3.4a Not testable: capabilities blocked by single-connection M2M test data
+
+Three capabilities intended for Phase D have **no distributed example and are not
+gettable one**, for a single shared reason. They are recorded here rather than covered
+by a fixture, and are marked ⛔ in §2.3.
+
+**The constraint.** An M2M mapping test suite can supply exactly **one** source
+connection. `ModelStoreTestConnectionFactory.buildModelStoreConnectionsForStore`
+iterates the `ModelStore` data block's entries but `return`s inside the loop on the
+first one, and `buildCloseableConnectionFromExternalFormat` installs a single
+`StreamProviderHolder` thread-local stream. So:
+
+1. A `ModelStore: ModelStore #{ ClassA: …, ClassB: … }#` block silently uses only
+   `ClassA` — multi-source-class M2M models cannot be driven from mapping test data.
+2. Any query whose plan crosses two set implementations produces an
+   `InMemoryCrossStoreGraphFetchExecutionNode` with one store read per side. The first
+   read consumes the only stream and the second fails with `RuntimeException: Input
+   stream was not provided`.
+
+This behaviour is **known and deliberately not being changed** — other code depends on
+its particulars, and unpicking it is more involved than it first appears. Treat it as
+a fixed property of the harness when planning M2M coverage, not as a defect to route
+around.
+
+**What that blocks.**
+
+| Capability | Why it cannot be proven | Where it could be covered |
+|---|---|---|
+| `mapping:m2m-local-property` | A local mapping property (`+prop: T[m]: $src…`) exists on the set implementation, not the class. In a pure-M2M model its only consumer is a cross-set (XStore) association, and executing that traversal needs a second connection. | §3.10 (Phase J) `mapping:cross-store`, where a real second store supplies the other side |
+| `mapping:operation-mapping-merge` | Merge is defined over set implementations reading **different** source classes — three sources in the canonical form. Constraint (1) means only the first is ever populated. | §3.10 (Phase J), or any future harness that admits multiple M2M connections |
+| `mapping:operation-mapping-merge-validation` | Same shape as merge, differing only in the cross-set predicate. | as above |
+
+**No compile-only fixtures were added for these.** A model that parses and compiles but
+never executes the capability under test would register as coverage in §2 while proving
+nothing about the feature's behaviour — a false green is worse than an honest ❌. The
+grammar for all three is real and verified (merge round-trips in
+`TestMappingGrammarRoundtrip#testMergeModelMapping`; the local-property and XStore forms
+appear in `core/store/m2m/tests/simple.pure`), so authoring is not the obstacle —
+executability is.
+
+> A `m2m-local-property` fixture was written during Phase D and then removed for exactly
+> this reason: with both set implementations reading one flat source class it compiled
+> and its non-crossing query executed, but the local property itself was never exercised
+> at run time, so the descriptor would have claimed a capability it did not test.
+
+> Note 1 under §3.1 had routed the two merge capabilities to this batch after finding
+> them M2M-only rather than relational. That routing was correct about the domain; the
+> §3.4 table was never extended with them, and on investigation they are not
+> executable here either. They stay ❌ until Phase J.
 
 ### 3.5 Service shapes → new `legend-engine-xt-service-emit`
 
@@ -762,7 +888,7 @@ the largest gaps; later phases are gated on standing up modules.
 | **B** | §3.2 Relational store features (6 of 8 tests — **done**; right-/full-outer not real) | No | 6 store capabilities (cross-schema, cross-table-filter, dyna-function, inline-view, left-outer-join, nested-join) | Low |
 | **B′** | §3.1b Relation-function gaps (1 of 2 tests — `relation-primary-key` **done**; `relation-binding-transformer` moved to §3.7/Phase G) | No | 1 mapping (`mapping:relation-primary-key`) | Low |
 | **C** | §3.3 Milestoning (1 test — **done**; all-versions-in-range not supported in Legend grammar) | No | `milestoning:bi-temporal` + table-backed milestoning path | Low–Med |
-| **D** | §3.4 Grammar + M2M (11 tests) | `legend-engine-emit-m2m` | 6 grammar + 4 mapping | Med — 1 module |
+| **D** | §3.4 Grammar + M2M (10 of 11 tests — **done**; 1 not executable, §3.4a) | `legend-engine-core-emit-tests` (renamed + relocated — §3.4) | 4 grammar + 3 mapping | Med — 1 module |
 | **E** | §3.5 Service shapes (5 tests) | `legend-engine-xt-service-emit` | 3 execution + legacy paths | Med — 1 module |
 | **F** | §3.6 File generation (3 tests) | `legend-engine-xt-generation-emit` | real file generation (Avro/Protobuf/JSON Schema) | Med |
 | **G** | §3.7 External format (3 tests) | format `-emit` module(s) | 3 execution capabilities | Med |
@@ -814,30 +940,41 @@ Any genuinely new capability discovered while authoring must be added to
 
 ## 5. Summary
 
-- **78 of 108** taxonomy capabilities have a distributed example today, up from
+- **85 of 108** taxonomy capabilities have a distributed example today, up from
   31 of 93. Phase A closed 19; the separately-landed relation-function batch
   closed 13 more and added 12 capabilities to the taxonomy; §3.0 then added 3 more
   (all immediately covered) and made 14 already-covered-but-mistagged capabilities
-  machine-visible; Phase B closed 6 store features, Phase B′ 1 relation-mapping, and
-  Phase C 1 milestoning.
-- Of the 30 uncovered, **five are not real targets** —
+  machine-visible; Phase B closed 6 store features, Phase B′ 1 relation-mapping,
+  Phase C 1 milestoning, and Phase D 7 (4 grammar + 3 mapping, including promoting
+  `mapping:mapping` from framework-only to a distributed example).
+- Of the 23 uncovered, **eight are not real targets** —
   `execution:model-generation` has no implementation (§2.9),
   `mapping:relational-literal-list` is blocked by an engine defect (note 2 under
   §3.1), `store:relational-{right-outer,outer}-join` have no classic-store
-  grammar (§3.2), and `milestoning:all-versions-in-range-query` is rejected by the
-  Legend grammar (§3.3) — leaving **25 real gaps**.
-- **Mapping (31/40) and store (9/13) are no longer weak domains.** The concentration
-  is now **execution (5/17, mostly module-gated)**; grammar is 6/10 and milestoning
-  6/7 (all-versions-in-range out of scope).
+  grammar (§3.2), `milestoning:all-versions-in-range-query` is rejected by the
+  Legend grammar (§3.3), and `mapping:m2m-local-property` /
+  `mapping:operation-mapping-merge` / `mapping:operation-mapping-merge-validation`
+  cannot be executed under single-connection M2M test data (§3.4a) — leaving
+  **15 real gaps**.
+- **Grammar is closed (10/10); mapping (35/40) and store (9/13) are no longer weak
+  domains.** The one remaining concentration is **execution (5/17, mostly
+  module-gated)**; milestoning is 6/7 (all-versions-in-range out of scope).
 - **§3.0 (done) added no tests** but was the highest-priority item: fourteen
   capabilities were covered by passing tests yet invisible to §2 because of
   off-taxonomy tags, and one descriptor (`relational-service-with-join.yaml`) did
   not run at all because its filename lacked the `.emit` infix. Both are now fixed.
-- **Phases B, B′, and C are done** (6 store tests + 1 relation-mapping + 1
-  milestoning, no new modules). **The no-new-module work is now exhausted** — every
-  remaining real gap needs a new `-emit` module (D–I: M2M, service shapes, file
-  generation, external format, other stores, function activators), or is a
-  cross-feature combo (J).
+- **Phases B, B′, C and D are done** (6 store tests + 1 relation-mapping + 1
+  milestoning + 10 core-feature tests). Phase D stood up the first new module and
+  closed the grammar domain outright. Every remaining real gap needs a new `-emit`
+  module (E–I: service shapes, file generation, external format, other stores,
+  function activators) or is a cross-feature combo (J).
+- **§3.4a is the one place where a batch shipped smaller than planned for a reason
+  other than the feature being unreal.** Local properties and merge operations are
+  genuine, working engine features; what is missing is a way to *execute* them from
+  an M2M mapping test, because `ModelStoreTestConnectionFactory` supplies a single
+  source connection and that behaviour is deliberately staying as it is. No
+  compile-only fixtures were substituted, so §2 does not overstate coverage. Phase J's
+  cross-store work is where these three become provable.
 - Every real feature has a distributed example at the end of Phase I; the
   remaining work is combination-level and incremental. Model generation is
   revisited only if a real extension ships.
