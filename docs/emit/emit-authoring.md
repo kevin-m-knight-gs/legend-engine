@@ -94,7 +94,7 @@ Apply the rule from `emit.md` §3.2:
 | M2M mapping (no service, no store) | `legend-engine-core/legend-engine-core-emit-tests`, under `src/test/resources/m2m-emit-models/`, run by `M2MEMITTests` |
 | Relational store / mapping / connection (including embedded service tests) | `legend-engine-xts-relationalStore/legend-engine-xt-relationalStore-emit`, under `src/test/resources/relational-emit-models/`, run by `RelationalEMITTests` |
 | Relation (`~func`) function-based class mapping — `ClassName: Relation { ~func f():Relation<Any>[1]; ... }` | `legend-engine-xts-relationalStore/legend-engine-xt-relationalStore-emit`, under `src/test/resources/relation-emit-models/`, run by `RelationEMITTests` |
-| Service / service-test (where the mapping & store are already on the service-emit classpath) | `legend-engine-xts-service/legend-engine-xt-service-emit` |
+| Service shapes — multi-execution, test data shared between services, and the two deprecated Phase 5 test runners (legacy `test: Single` on a Service, legacy `MappingTests` on a Mapping) | `legend-engine-xts-service/legend-engine-xt-service-emit`, under `src/test/resources/emit-models/`, run by `ServiceEMITTests` |
 | File / model generation | `legend-engine-xts-generation/legend-engine-xt-generation-emit` |
 | External format / binding | The format's `-emit` module under `legend-engine-core-external-format` or its `xts-*` peer (e.g. `legend-engine-xts-json/legend-engine-external-format-jsonSchema-emit`) |
 | Flat-data store | `legend-engine-xts-flatdata/legend-engine-xt-flatdata-emit` |

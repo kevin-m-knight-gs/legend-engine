@@ -22,12 +22,14 @@ real-extension example**.
 
 ## 1. Inventory of Existing (Distributed) EMIT Tests
 
-**Seventy-six** distributed descriptors exist across four modules — 56 of them in
+**Eighty-one** distributed descriptors exist across five modules — 56 of them in
 the relational module and 10 in the core-feature module added by Phase D, both of
-which host two independent suites over two resource roots. Shared-dependency bundles
+which host two independent suites over two resource roots, and 5 in the service
+module added by Phase E. Shared-dependency bundles
 (`relational-shared-domain`,
 `relational-shared-firm-db`, `relation-shared-domain`, `relation-shared-db`,
-`relation-shared-data`) are reusable and only run parse + compile on their own.
+`relation-shared-data`, `service-shared-domain`) are reusable and only run parse +
+compile on their own.
 
 ### 1.1 `legend-engine-xt-relationalStore-emit` — `relational-emit-models/`
 
@@ -52,7 +54,8 @@ passes — see §2.10(d).)
 ### 1.2 `legend-engine-xt-relationalStore-emit` — `relation-emit-models/`
 
 Driven by `RelationEMITTests` over a separate resource root, so a failure is
-attributable to one suite. 22 descriptors, 211 dynamic tests, covering
+attributable to one suite. 23 descriptors, 221 dynamic tests (`relation-primary-key`
+was added by Phase B′ — §3.1b), covering
 **relation-function** class mappings (`~func` / `~src`) rather than table-backed
 relational mappings.
 
@@ -127,14 +130,31 @@ independently-runnable suites by subject:
 | `m2m-derived-source-property` | `execution:test-data`, `grammar:derived-property`, `grammar:qualified-property`, `mapping:m2m-derived-source-property`, `mapping:mapping` | basic |
 | `m2m-enumeration-mapping` | `execution:test-data`, `grammar:enumeration`, `mapping:enumeration-mapping`, `mapping:mapping` | basic |
 
-### 1.6 Test-hosting modules that exist today
+### 1.6 `legend-engine-xts-service/legend-engine-xt-service-emit` (service shapes)
 
-Four modules currently host distributed EMIT tests:
+5 descriptors, 37 dynamic tests, all added by Phase E (§3.5). One suite over the
+conventional `emit-models/` root, driven by `ServiceEMITTests`, so no server-pom
+`includedRelativeSubpaths` override is needed. `service-shared-domain` is the
+reusable bundle (Person class + H2 store + relational mapping) the other four
+depend on; it runs parse + compile only.
+
+| Descriptor | Non-scaffolding features | Complexity |
+|---|---|---|
+| `service-shared-domain` | `grammar:derived-property` | basic |
+| `service-multi-execution` | `execution:{multi-execution-service, plan-generation, service, service-test, test-data}` | basic |
+| `service-shared-test-data` | `execution:{data-element, plan-generation, service, service-test, shared-test-data, test-data}` | basic |
+| `service-legacy-test` | `execution:{legacy-service-test, plan-generation, service, test-data}` | basic |
+| `mapping-legacy-test` | `execution:{legacy-mapping-test, test-data}` | basic |
+
+### 1.7 Test-hosting modules that exist today
+
+Five modules currently host distributed EMIT tests:
 
 - `legend-engine-xt-relationalStore-emit` (two suites: `relational-emit-models/`
   via `RelationalEMITTests`, `relation-emit-models/` via `RelationEMITTests`)
 - `legend-engine-xt-persistence-emit`
 - `legend-engine-core-emit-tests` (core-feature: Pure language constructs + M2M)
+- `legend-engine-xt-service-emit` (service shapes + the two legacy Phase 5 runners)
 - `legend-engine-emit-tests` (cross-feature)
 
 The authoring guide (`emit-authoring.md` §3.1) references several per-feature
@@ -146,7 +166,8 @@ their tests can land:
   batch is majority core-language fixtures rather than M2M, and relocated to a
   sibling of `legend-engine-core-emit` so a catalog module is not mistaken for one of
   the four framework modules inside it
-- `legend-engine-xts-service/legend-engine-xt-service-emit` — service shapes
+- ~~`legend-engine-xts-service/legend-engine-xt-service-emit`~~ — stood up in Phase E
+  (see §3.5), one suite over `emit-models/` driven by `ServiceEMITTests`
 - `legend-engine-xts-generation/legend-engine-xt-generation-emit` — file/model generation
 - `legend-engine-xts-flatdata/legend-engine-xt-flatdata-emit` — flat-data store
 - external-format `-emit` modules (e.g. `legend-engine-xts-json/…-jsonSchema-emit`)
@@ -302,7 +323,10 @@ while normalizing the relation batch.
 > classes plus `allVersions()`/`all(%date)`, so it alone earns all five), so the
 > coverage above is now machine-checkable. Phase C shrinks accordingly — see §3.3.
 
-### 2.6 Execution — 5 / 17 covered
+### 2.6 Execution — 10 / 19 covered (2 out-of-scope — §2.9, §3.5)
+
+Phase E added two taxonomy entries (`execution:legacy-{mapping,service}-test`) and
+covered five capabilities, so the domain's total grew from 17 to 19.
 
 | Capability | Status |
 |---|---|
@@ -311,15 +335,17 @@ while normalizing the relation batch.
 | `execution:service` | ✅ |
 | `execution:service-test` | ✅ |
 | `execution:test-data` | ✅ |
+| `execution:multi-execution-service` | ✅ Phase E (`service-multi-execution`, per-key routing proven by keyed test data) |
+| `execution:shared-test-data` | ✅ Phase E (`service-shared-test-data`, one `Data` element feeding two services) |
+| `execution:legacy-mapping-test` | ✅ Phase E (`mapping-legacy-test`; §6.2 taxonomy addition) |
+| `execution:legacy-service-test` | ✅ Phase E (`service-legacy-test`; §6.2 taxonomy addition) |
+| `execution:plan-generation` | ✅ Phase E — the tag existed but was applied nowhere; the three service-bearing Phase E descriptors now carry it. Retro-applying it to the pre-existing service models is a separate metadata pass (§3.5) |
 | `execution:file-generation` | ❌ (real generators exist — Avro/Protobuf/JSON Schema/…; only the fake-SPI framework fixture exercises the path) |
 | `execution:model-generation` | ⛔ (no real `ModelGenerationExtension` SPI in legend-engine — §2.9) |
+| `execution:post-validation` | ⛔ not executable by EMIT — §3.5 |
 | `execution:binding` | ❌ |
 | `execution:external-format` | ❌ |
 | `execution:schema-set` | ❌ |
-| `execution:multi-execution-service` | ❌ |
-| `execution:post-validation` | ❌ |
-| `execution:shared-test-data` | ❌ |
-| `execution:plan-generation` | ❌ (tag never applied; every service model exercises the path) |
 | `execution:hosted-service` | ❌ |
 | `execution:snowflake-app` | ❌ |
 | `execution:bigquery-function` | ❌ |
@@ -338,23 +364,27 @@ opportunities here are combination-level only (see §3.4) and are low priority.
 | Mapping | 34 / 40 (4 out-of-scope — §3.1 note 2, §3.4a) | 1 / 27 |
 | Store | 9 / 13 (2 out-of-scope — §3.2) | 3 / 13 |
 | Milestoning | 6 / 7 (1 out-of-scope — §3.3) | 0 / 7 |
-| Execution | 5 / 17 (1 out-of-scope — §2.9) | 5 / 17 |
+| Execution | 10 / 19 (2 out-of-scope — §2.9, §3.5) | 5 / 17 |
 | Persistence | 12 / 12 | 12 / 12 |
-| **Total** | **85 / 108** | **31 / 93** |
+| **Total** | **90 / 110** | **31 / 93** |
 
 Totals grew because the relation-function work added 12 real capabilities to the
-taxonomy (§6.2 of `emit.md`) as well as covering them, and §3.0 added 3 more
+taxonomy (§6.2 of `emit.md`) as well as covering them, §3.0 added 3 more
 (`mapping:relation-filter`, `mapping:relation-group-by`,
-`mapping:relation-xstore-association`) while normalizing the relation batch —
-all three immediately covered.
+`mapping:relation-xstore-association`) while normalizing the relation batch, and
+Phase E added 2 (`execution:legacy-mapping-test`,
+`execution:legacy-service-test`) — all five immediately covered.
 
 The picture has changed substantially. **Mapping is no longer the hole** — it went
 from 1/27 to 34/40 across Phase A, the relation batch and Phase D. **Grammar is
-closed** at 10/10 and **milestoning is nearly closed** rather than untouched. There
-is now exactly one concentration left:
+closed** at 10/10 and **milestoning is nearly closed** rather than untouched.
+**Execution is no longer a concentration** — Phase E took it from 5/17 to 10/19,
+and every one of its remaining real gaps is a single named module away:
 
-- **Execution — 5 / 17.** Gated on new modules almost entirely (§3.5–§3.9). This is
-  the only remaining concentration.
+- **Execution — 10 / 19.** The 7 remaining real gaps are file generation (§3.6),
+  the three external-format capabilities (§3.7), and the three function
+  activators (§3.9); each is gated on standing up that feature's `-emit` module,
+  not on any missing engine capability.
 - **Store — 9 / 13 (Phase B done).** All six authorable join/store-shape features
   landed (§3.2); the two remaining real gaps (`service-store`, `flat-data-store`)
   need new modules (§3.8), and right-/full-outer join are out of scope (no
@@ -771,22 +801,59 @@ executability is.
 > §3.4 table was never extended with them, and on investigation they are not
 > executable here either. They stay ❌ until Phase J.
 
-### 3.5 Service shapes → new `legend-engine-xt-service-emit`
+### 3.5 Service shapes → new `legend-engine-xt-service-emit` — **DONE (4 of 5; 1 not executable)**
 
-Stand up `legend-engine-xts-service/legend-engine-xt-service-emit`.
+**Applied.** `legend-engine-xts-service/legend-engine-xt-service-emit` was stood
+up with one suite (`emit-models/` → `ServiceEMITTests`), a
+`service-shared-domain` bundle, and 4 fixtures. 37 dynamic tests, all passing,
+checkstyle clean. The module's models are backed by H2 rather than a model store,
+so every fixture executes rather than only compiles.
 
 | Proposed test | Closes | Feature set (non-scaffolding) |
 |---|---|---|
-| `service-multi-execution` | `execution:multi-execution-service` | `execution:{service,service-test,multi-execution-service}` |
-| `service-post-validation` | `execution:post-validation` | `execution:{service,service-test,post-validation}` |
-| `service-shared-test-data` | `execution:shared-test-data` | `execution:{service,service-test,shared-test-data,data-element}` |
-| `service-legacy-test` | legacy `ServiceTest` path (Phase 5) | `execution:{service,service-test}` (tag `legacy-service-test`) |
-| `mapping-legacy-test` | legacy `MappingTest`/`MappingTestSuite` path (Phase 5) | `mapping:mapping` (tag `legacy-mapping-test`) |
+| `service-multi-execution` | `execution:multi-execution-service` | `execution:{multi-execution-service,plan-generation,service,service-test,test-data}` |
+| ~~`service-post-validation`~~ | — ⛔ not executable by EMIT (see below) | — |
+| `service-shared-test-data` | `execution:shared-test-data` | `execution:{data-element,plan-generation,service,service-test,shared-test-data,test-data}` |
+| `service-legacy-test` | legacy `ServiceTest` path (Phase 5) | `execution:{legacy-service-test,plan-generation,service,test-data}` |
+| `mapping-legacy-test` | legacy `MappingTests` path (Phase 5) | `execution:{legacy-mapping-test,test-data}` |
 
-> `service-legacy-test` / `mapping-legacy-test` fill a **pipeline** gap rather
-> than a taxonomy gap: EMIT Phase 5 runs three test runners (Testable, legacy
-> mapping, legacy service — `emit.md` §4.6) and only the Testable path has a
-> distributed example. Consider adding a `legacy` taxonomy tag in the same PR.
+> **Two taxonomy entries were added** (`emit.md` §6.2, Execution):
+> `execution:legacy-mapping-test` and `execution:legacy-service-test`. §4.2 had
+> flagged a `legacy` marker as optional; it turned out to be necessary. The legacy
+> runners are a **pipeline** gap — EMIT Phase 5 drives three runners (Testable,
+> legacy mapping, legacy service — `emit.md` §4.6) and only the Testable path had a
+> distributed example — and overloading `execution:service-test` for them would have
+> made the modern and deprecated paths indistinguishable in the matrix.
+
+> **`execution:plan-generation` is now applied**, on the three service-bearing
+> Phase E descriptors. §4.2 had noted the tag existed but was used nowhere.
+> Retro-applying it to the pre-existing service models (`relational-service`,
+> `relational-service-with-join`, `service-with-binding`, and whichever persistence
+> descriptors define a Service in *primary* scope) was deliberately left out of this
+> phase: Phase 6 only runs for primary-scope Services, and several persistence
+> descriptors reach their Service through the `persistence-shared` dependency, so
+> the sweep needs per-descriptor checking rather than a blanket edit.
+
+> **`service-multi-execution` needed a framework fix.** A test on a multi-execution
+> service yields a `MultiExecutionServiceTestResult` — a bundle of one result per
+> execution key, and neither a `TestExecuted` nor a `TestError`. `EMITTasks.assertTestPassed`
+> fell through to "Unexpected test result type" and `EMITRunner`'s tally counted it as a
+> failure, so no multi-execution service could ever have passed EMIT. Both now unwrap
+> the bundle and assert every key (`EMITTasks.isTestFailure` is the shared predicate),
+> naming the failing key in the message. A bundle with **no** per-key results is treated
+> as a failure too — without that, an atomic test whose `keys` match none of the
+> service's execution keys would pass while executing nothing. Verified by pointing the
+> fixture's `keys` at a non-existent env and confirming the guard fires.
+
+> **`service-post-validation` was not authored.** EMIT cannot execute post-validations:
+> the assertions are evaluated only by `ServicePostValidationRunner`, a REST-driven
+> runner with no hook in the Testable path or in Phase 5. A fixture would have proved
+> that the block parses, that the compiler's checks fire (duplicate assertion ids,
+> assertion parameter type vs. service execution return type), and that a plan still
+> generates — but never that an assertion evaluates. Under `emit-authoring.md` §11.3
+> that is a compile-only claim on a run-time capability, so the capability stays ⛔ in
+> §2.6 rather than being tagged. It becomes authorable if Phase 5 ever gains a
+> post-validation hook.
 
 ### 3.6 File generation (real extensions) → new `legend-engine-xt-generation-emit`
 
@@ -889,7 +956,7 @@ the largest gaps; later phases are gated on standing up modules.
 | **B′** | §3.1b Relation-function gaps (1 of 2 tests — `relation-primary-key` **done**; `relation-binding-transformer` moved to §3.7/Phase G) | No | 1 mapping (`mapping:relation-primary-key`) | Low |
 | **C** | §3.3 Milestoning (1 test — **done**; all-versions-in-range not supported in Legend grammar) | No | `milestoning:bi-temporal` + table-backed milestoning path | Low–Med |
 | **D** | §3.4 Grammar + M2M (10 of 11 tests — **done**; 1 not executable, §3.4a) | `legend-engine-core-emit-tests` (renamed + relocated — §3.4) | 4 grammar + 3 mapping | Med — 1 module |
-| **E** | §3.5 Service shapes (5 tests) | `legend-engine-xt-service-emit` | 3 execution + legacy paths | Med — 1 module |
+| **E** | §3.5 Service shapes (4 of 5 tests — **done**; post-validation not executable) | `legend-engine-xt-service-emit` | 5 execution (multi-execution, shared-test-data, both legacy Phase 5 runners, plan-generation) | Med — 1 module |
 | **F** | §3.6 File generation (3 tests) | `legend-engine-xt-generation-emit` | real file generation (Avro/Protobuf/JSON Schema) | Med |
 | **G** | §3.7 External format (3 tests) | format `-emit` module(s) | 3 execution capabilities | Med |
 | **H** | §3.8 Other stores (2 tests) | flatdata + serviceStore `-emit` | 2 store capabilities | Med |
@@ -898,9 +965,10 @@ the largest gaps; later phases are gated on standing up modules.
 
 **Milestone: every real feature covered at end of Phase I.** Every
 `domain:capability` in `emit.md` §6.2 that maps to a real legend-engine feature
-has at least one distributed example. The sole exception is
-`execution:model-generation`, which has no real implementation and is out of
-scope (§2.9). Phase J and the persistence combination extras (§3.4 of
+has at least one distributed example. The exceptions are
+`execution:model-generation`, which has no real implementation (§2.9), and
+`execution:post-validation`, which EMIT has no way to execute (§3.5) — both out of
+scope. Phase J and the persistence combination extras (§3.4 of
 `emit-authoring.md` dedup rules apply) are then incremental combination coverage
 rather than gap-closing.
 
@@ -925,13 +993,16 @@ For each proposed descriptor, follow `emit-authoring.md` §4:
 The relation batch added 12 entries to `emit.md` §6.2 **after** the fact (§2.10);
 that retrofit is the cautionary case for this section. Beyond it, no new taxonomy
 entries are required to close the §2 gaps — every remaining proposed test maps to
-an existing `domain:capability`. Two optional additions to consider in the owning
-PRs:
+an existing `domain:capability`. Both of the additions this section once listed as
+optional were made by Phase E, in the same PR as the tests:
 
-- A `legacy` marker (or `execution:legacy-mapping-test` / `execution:legacy-service-test`)
-  to distinguish the legacy Phase-5 runner coverage in §3.5.
-- Apply the already-defined `execution:plan-generation` tag to service-bearing
-  models (it exists in the taxonomy but is currently applied nowhere).
+- `execution:legacy-mapping-test` / `execution:legacy-service-test` — **added**,
+  distinguishing the legacy Phase-5 runner coverage from the modern Testable path
+  rather than overloading `execution:service-test` for both (§3.5).
+- `execution:plan-generation` — **applied** to the three service-bearing Phase E
+  descriptors, so the tag is no longer defined-but-unused. Retro-applying it to the
+  pre-existing service models is a separate metadata pass; see the note in §3.5 for
+  why it needs per-descriptor checking.
 
 Any genuinely new capability discovered while authoring must be added to
 `emit.md` §6.2 **in the same PR** as the test (`emit-authoring.md` §10).
@@ -940,34 +1011,45 @@ Any genuinely new capability discovered while authoring must be added to
 
 ## 5. Summary
 
-- **85 of 108** taxonomy capabilities have a distributed example today, up from
+- **90 of 110** taxonomy capabilities have a distributed example today, up from
   31 of 93. Phase A closed 19; the separately-landed relation-function batch
   closed 13 more and added 12 capabilities to the taxonomy; §3.0 then added 3 more
   (all immediately covered) and made 14 already-covered-but-mistagged capabilities
   machine-visible; Phase B closed 6 store features, Phase B′ 1 relation-mapping,
-  Phase C 1 milestoning, and Phase D 7 (4 grammar + 3 mapping, including promoting
-  `mapping:mapping` from framework-only to a distributed example).
-- Of the 23 uncovered, **eight are not real targets** —
+  Phase C 1 milestoning, Phase D 7 (4 grammar + 3 mapping, including promoting
+  `mapping:mapping` from framework-only to a distributed example), and Phase E 5
+  execution capabilities (2 of them taxonomy additions of its own).
+- Of the 20 uncovered, **nine are not real targets** —
   `execution:model-generation` has no implementation (§2.9),
+  `execution:post-validation` cannot be executed by EMIT (§3.5),
   `mapping:relational-literal-list` is blocked by an engine defect (note 2 under
   §3.1), `store:relational-{right-outer,outer}-join` have no classic-store
   grammar (§3.2), `milestoning:all-versions-in-range-query` is rejected by the
   Legend grammar (§3.3), and `mapping:m2m-local-property` /
   `mapping:operation-mapping-merge` / `mapping:operation-mapping-merge-validation`
   cannot be executed under single-connection M2M test data (§3.4a) — leaving
-  **15 real gaps**.
-- **Grammar is closed (10/10); mapping (35/40) and store (9/13) are no longer weak
-  domains.** The one remaining concentration is **execution (5/17, mostly
-  module-gated)**; milestoning is 6/7 (all-versions-in-range out of scope).
+  **11 real gaps**.
+- **Grammar is closed (10/10); mapping (34/40), store (9/13) and now execution
+  (10/19) are no longer weak domains.** There is no remaining concentration:
+  milestoning is 6/7 (all-versions-in-range out of scope), and each of the 11 real
+  gaps is a single named `-emit` module away (§3.6–§3.9) or a cross-feature combo
+  (§3.10).
 - **§3.0 (done) added no tests** but was the highest-priority item: fourteen
   capabilities were covered by passing tests yet invisible to §2 because of
   off-taxonomy tags, and one descriptor (`relational-service-with-join.yaml`) did
   not run at all because its filename lacked the `.emit` infix. Both are now fixed.
-- **Phases B, B′, C and D are done** (6 store tests + 1 relation-mapping + 1
-  milestoning + 10 core-feature tests). Phase D stood up the first new module and
-  closed the grammar domain outright. Every remaining real gap needs a new `-emit`
-  module (E–I: service shapes, file generation, external format, other stores,
-  function activators) or is a cross-feature combo (J).
+- **Phases B, B′, C, D and E are done** (6 store tests + 1 relation-mapping + 1
+  milestoning + 10 core-feature tests + 4 service-shape tests). Phase D stood up the
+  first new module and closed the grammar domain outright; Phase E stood up the
+  second and took execution from the sole remaining concentration to 10/19. Every
+  remaining real gap needs a new `-emit` module (F–I: file generation, external
+  format, other stores, function activators) or is a cross-feature combo (J).
+- **Phase E was the first batch to require a framework change.** No multi-execution
+  service could ever have passed EMIT: its test results arrive as a
+  `MultiExecutionServiceTestResult` bundle, which `EMITTasks.assertTestPassed` rejected
+  as an unexpected type and `EMITRunner` tallied as a failure. Both now unwrap the
+  bundle per execution key, and an empty bundle — an atomic test whose `keys` match no
+  execution key — is a failure rather than a silent pass. See §3.5.
 - **§3.4a is the one place where a batch shipped smaller than planned for a reason
   other than the feature being unreal.** Local properties and merge operations are
   genuine, working engine features; what is missing is a way to *execute* them from
@@ -977,7 +1059,8 @@ Any genuinely new capability discovered while authoring must be added to
   cross-store work is where these three become provable.
 - Every real feature has a distributed example at the end of Phase I; the
   remaining work is combination-level and incremental. Model generation is
-  revisited only if a real extension ships.
+  revisited only if a real extension ships, and post-validation only if EMIT
+  Phase 5 gains a hook that runs the assertions.
 
 ### 5.1 Structural note — two suites, one module
 
