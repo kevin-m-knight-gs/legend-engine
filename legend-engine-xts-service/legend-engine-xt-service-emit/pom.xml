@@ -24,7 +24,7 @@
 
     <artifactId>legend-engine-xt-service-emit</artifactId>
     <name>Legend Engine - XT - Service - EMIT Tests</name>
-    <description>EMIT (Engine Model Integration Test) models exercising service shapes: multi-execution services, test data shared between services via a Data element, and the two deprecated EMIT Phase 5 test runners (legacy ServiceTest and legacy MappingTest). Models execute against an in-memory H2.</description>
+    <description>EMIT (Engine Model Integration Test) models exercising service shapes: multi-execution services, test data shared between services via a Data element, and the deprecated ServiceTest block that EMIT Phase 5's legacy service test runner drives. Models execute against an in-memory H2.</description>
 
     <dependencies>
         <!-- EMIT framework + JUnit integration -->
@@ -48,13 +48,6 @@
         </dependency>
         <!-- JUnit 5 -->
 
-        <!-- Mapping test runner: registers MappingTestableRunnerExtension via ServiceLoader and
-             carries the legacy MappingTestRunner that EMIT Phase 5 drives for `MappingTests`. -->
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-test-runner-mapping</artifactId>
-            <scope>test</scope>
-        </dependency>
         <!-- Service test runner: registers ServiceTestableRunnerExtension via ServiceLoader and
              carries the legacy ServiceTestRunner that EMIT Phase 5 drives for `test: Single`. -->
         <dependency>

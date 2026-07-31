@@ -23,9 +23,14 @@ import java.util.stream.Stream;
 /**
  * JUnit 5 runner for the <b>service shapes</b> EMIT suite: services whose execution
  * shape is the subject — multi-execution routing by env key, test data shared between
- * services through a {@code Data} element — plus the two deprecated EMIT Phase 5 test
- * runners (legacy {@code test: Single} on a Service, legacy {@code MappingTests} on a
- * Mapping), which have no distributed example anywhere else in the catalog.
+ * services through a {@code Data} element — plus the deprecated {@code test: Single}
+ * block that EMIT Phase 5's legacy service test runner drives, which has no example
+ * anywhere else in the catalog.
+ *
+ * <p>Only service-bearing models belong here. The legacy <i>mapping</i> test runner is
+ * the sibling Phase 5 path but involves no Service, so its example lives with the
+ * mappings it exercises — {@code relational-legacy-mapping-test} in the relational
+ * suite.
  *
  * <p>All models are backed by an in-memory H2 relational mapping so the tests execute
  * rather than only compile. The module hosts a single subject area, so it keeps the
