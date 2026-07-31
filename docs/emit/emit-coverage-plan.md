@@ -22,8 +22,8 @@ real-extension example**.
 
 ## 1. Inventory of Existing (Distributed) EMIT Tests
 
-**Eighty-one** distributed descriptors exist across five modules — 57 of them in
-the relational module and 10 in the core-feature module added by Phase D, both of
+**Eighty-two** distributed descriptors exist across five modules — 57 of them in
+the relational module and 11 in the core-feature module, both of
 which host two independent suites over two resource roots, and 4 in the service
 module added by Phase E. Shared-dependency bundles
 (`relational-shared-domain`,
@@ -111,12 +111,13 @@ they matter because the coverage matrix is computed from metadata.
 
 ### 1.5 `legend-engine-core/legend-engine-core-emit-tests` (core-feature)
 
-10 descriptors, 52 dynamic tests, all added by Phase D (§3.4), split across two
+11 descriptors, 58 dynamic tests — 10 added by Phase D (§3.4) and
+`m2m-legacy-mapping-test` by Phase E (§3.5) — split across two
 independently-runnable suites by subject:
 
 - `grammar-emit-models/` → `GrammarEMITTests` — 7 language-construct models
   (parse + compile; no store, no mapping)
-- `m2m-emit-models/` → `M2MEMITTests` — 3 model-to-model mappings whose embedded test
+- `m2m-emit-models/` → `M2MEMITTests` — 4 model-to-model mappings whose embedded test
   suites execute against the in-memory store
 
 | Descriptor | Non-scaffolding features | Complexity |
@@ -131,6 +132,7 @@ independently-runnable suites by subject:
 | `m2m-transform` | `execution:test-data`, `mapping:m2m-transform`, `mapping:mapping` | basic |
 | `m2m-derived-source-property` | `execution:test-data`, `grammar:derived-property`, `grammar:qualified-property`, `mapping:m2m-derived-source-property`, `mapping:mapping` | basic |
 | `m2m-enumeration-mapping` | `execution:test-data`, `grammar:enumeration`, `mapping:enumeration-mapping`, `mapping:mapping` | basic |
+| `m2m-legacy-mapping-test` (Phase E) | `execution:legacy-mapping-test`, `execution:test-data`, `mapping:m2m-transform`, `mapping:mapping` | basic |
 
 ### 1.6 `legend-engine-xts-service/legend-engine-xt-service-emit` (service shapes)
 
@@ -343,7 +345,7 @@ covered five capabilities, so the domain's total grew from 17 to 19.
 | `execution:test-data` | ✅ |
 | `execution:multi-execution-service` | ✅ Phase E (`service-multi-execution`, per-key routing proven by keyed test data) |
 | `execution:shared-test-data` | ✅ Phase E (`service-shared-test-data`, one `Data` element feeding two services) |
-| `execution:legacy-mapping-test` | ✅ Phase E (`relational-legacy-mapping-test`, in the relational suite; §6.2 taxonomy addition) |
+| `execution:legacy-mapping-test` | ✅ Phase E — `relational-legacy-mapping-test` (relational suite) and `m2m-legacy-mapping-test` (M2M suite); the runner's two input-data paths are materially different, so both are covered. §6.2 taxonomy addition |
 | `execution:legacy-service-test` | ✅ Phase E (`service-legacy-test`; §6.2 taxonomy addition) |
 | `execution:plan-generation` | ✅ Phase E — the tag existed but was applied nowhere; the three service-bearing Phase E descriptors now carry it. Retro-applying it to the pre-existing service models is a separate metadata pass (§3.5) |
 | `execution:file-generation` | ❌ (real generators exist — Avro/Protobuf/JSON Schema/…; only the fake-SPI framework fixture exercises the path) |
@@ -822,21 +824,34 @@ model store, so each fixture executes rather than only compiles.
 | ~~`service-post-validation`~~ | — ⛔ not executable by EMIT (see below) | — |
 | `service-shared-test-data` | `execution:shared-test-data` | `execution:{data-element,plan-generation,service,service-test,shared-test-data,test-data}` |
 | `service-legacy-test` | legacy `ServiceTest` path (Phase 5) | `execution:{legacy-service-test,plan-generation,service,test-data}` |
-| `relational-legacy-mapping-test` → `relational-emit-models/` | legacy `MappingTests` path (Phase 5) | `execution:{legacy-mapping-test,test-data}` |
+| `relational-legacy-mapping-test` → `relational-emit-models/` | legacy `MappingTests` path (Phase 5), relational input data | `execution:{legacy-mapping-test,test-data}` |
+| `m2m-legacy-mapping-test` → `m2m-emit-models/` | legacy `MappingTests` path (Phase 5), Object/JSON input data | `execution:{legacy-mapping-test,test-data}`, `mapping:{m2m-transform,mapping}` |
 
-> **The legacy mapping fixture belongs to the relational suite, not this module.**
-> It was first written here as `mapping-legacy-test`, on the reasoning that the two
-> deprecated Phase 5 runners are siblings and should sit together. That was wrong:
-> the fixture contains no Service, and the runner being deprecated is a property of
-> the *test style*, not a feature area — grouping by it scatters mappings away from
-> the suites that own them. It now lives beside the other relational mappings as
-> `relational-legacy-mapping-test` and reuses `relational-shared-domain`. The general
-> rule, added to `emit-authoring.md` §3.1: a legacy `MappingTests` block goes wherever
-> its mapping kind goes — relational to `relational-emit-models/`, M2M to
-> `m2m-emit-models/`, multi-area to the cross-feature module. **There is no M2M
-> legacy mapping test yet**; `relational-legacy-mapping-test` is the only
-> `MappingTests` block anywhere in the catalog, so the M2M code path through
-> `MappingTestRunner` remains unexercised.
+> **The legacy mapping fixtures belong to the suites that own their mappings, not
+> to this module.** The relational one was first written here as
+> `mapping-legacy-test`, on the reasoning that the two deprecated Phase 5 runners are
+> siblings and should sit together. That was wrong: it contains no Service, and the
+> runner being deprecated is a property of the *test style*, not a feature area —
+> grouping by it scatters mappings away from the suites that own them. It now lives
+> beside the other relational mappings as `relational-legacy-mapping-test`, reusing
+> `relational-shared-domain`. The general rule, added to `emit-authoring.md` §3.1: a
+> legacy `MappingTests` block goes wherever its mapping kind goes — relational to
+> `relational-emit-models/`, M2M to `m2m-emit-models/`, multi-area to the
+> cross-feature module.
+
+> **Both of the runner's input-data paths are now covered.** `MappingTestRunner`
+> handles `<Object, JSON, …>` and the store-specific forms through completely
+> different code:
+> `buildTestConnection` turns `ObjectInputData` into a `JsonModelConnection` whose
+> url is a base64 `data:` URL, while relational input data goes out to
+> `ConnectionFactoryExtension` and ends up as H2 setup SQL generated by
+> `meta::relational::functions::database::setUpData`. Covering one proves nothing
+> about the other, so `m2m-legacy-mapping-test` was added alongside — it is the
+> M2M suite's only `MappingTests` block, and before it the whole
+> `ObjectInputData` branch was unexercised anywhere in the catalog. Note that its
+> single-source-class limit is a distinct one from the §3.4a constraint: it comes
+> from an explicit `inputData.size() != 1` check in `buildTestConnection`, not from
+> `ModelStoreTestConnectionFactory`'s thread-local stream.
 
 > **Two taxonomy entries were added** (`emit.md` §6.2, Execution):
 > `execution:legacy-mapping-test` and `execution:legacy-service-test`. §4.2 had
@@ -1060,8 +1075,8 @@ Any genuinely new capability discovered while authoring must be added to
   off-taxonomy tags, and one descriptor (`relational-service-with-join.yaml`) did
   not run at all because its filename lacked the `.emit` infix. Both are now fixed.
 - **Phases B, B′, C, D and E are done** (6 store tests + 1 relation-mapping + 1
-  milestoning + 10 core-feature tests + 3 service-shape tests + 1 legacy relational
-  mapping test). Phase D stood up the
+  milestoning + 10 core-feature tests + 3 service-shape tests + 2 legacy mapping
+  tests, one relational and one M2M). Phase D stood up the
   first new module and closed the grammar domain outright; Phase E stood up the
   second and took execution from the sole remaining concentration to 10/19. Every
   remaining real gap needs a new `-emit` module (F–I: file generation, external

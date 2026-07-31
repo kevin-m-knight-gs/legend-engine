@@ -112,12 +112,19 @@ runner. Place it with the mappings it exercises, exactly as you would a modern
 
 | The mapping under test is… | Place it in… |
 |---|---|
-| Relational | `relational-emit-models/` — e.g. `relational-legacy-mapping-test` |
-| M2M | `m2m-emit-models/` in `legend-engine-core-emit-tests` — none exists yet |
+| Relational | `relational-emit-models/` — `relational-legacy-mapping-test` |
+| M2M | `m2m-emit-models/` in `legend-engine-core-emit-tests` — `m2m-legacy-mapping-test` |
 | Spanning several feature areas | `legend-engine-emit-tests` (cross-feature, §3.2) |
 
 The runner being deprecated is a property of the *test style*, not a feature
 area; grouping by it would scatter mappings away from their own suites.
+
+The split also matters for coverage, not just tidiness: `MappingTestRunner`
+resolves `<Object, JSON, …>` input data into a `JsonModelConnection` over a
+base64 `data:` URL, while store-backed input data goes through
+`ConnectionFactoryExtension` and, for relational, becomes H2 setup SQL. One
+fixture proves nothing about the other branch, so a new store flavour wanting
+legacy-mapping-test coverage needs its own fixture in its own suite.
 
 ### 3.2 Cross-feature module (multi-area combinations)
 
