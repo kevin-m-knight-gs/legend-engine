@@ -22,9 +22,9 @@ real-extension example**.
 
 ## 1. Inventory of Existing (Distributed) EMIT Tests
 
-**Eighty-one** distributed descriptors exist across five modules — 56 of them in
+**Eighty-one** distributed descriptors exist across five modules — 57 of them in
 the relational module and 10 in the core-feature module added by Phase D, both of
-which host two independent suites over two resource roots, and 5 in the service
+which host two independent suites over two resource roots, and 4 in the service
 module added by Phase E. Shared-dependency bundles
 (`relational-shared-domain`,
 `relational-shared-firm-db`, `relation-shared-domain`, `relation-shared-db`,
@@ -33,10 +33,11 @@ compile on their own.
 
 ### 1.1 `legend-engine-xt-relationalStore-emit` — `relational-emit-models/`
 
-Driven by `RelationalEMITTests`. 33 descriptors, 239 dynamic tests. The eight
+Driven by `RelationalEMITTests`. 34 descriptors, 245 dynamic tests. The eight
 below predate the Phase A batch; the 17 added by Phase A are listed in §3.1; the
 7 added by Phase B (a shared two-schema store bundle + 6 store-feature tests) are
-in §3.2; Phase C added `milestoning-bitemporal` (§3.3). (`relational-service-with-join`
+in §3.2; Phase C added `milestoning-bitemporal` (§3.3); Phase E added
+`relational-legacy-mapping-test` (§3.5). (`relational-service-with-join`
 was dead until §3.0 renamed it to `.emit.yaml`; it now discovers, runs, and
 passes — see §2.10(d).)
 
@@ -50,6 +51,7 @@ passes — see §2.10(d).)
 | `relational-enumeration` | `execution:data-element`, `execution:test-data`, `grammar:enumeration`, `mapping:enumeration-mapping` | intermediate |
 | `relational-service` | `execution:service`, `execution:service-test` | basic |
 | `relational-service-with-join` | `execution:service`, `execution:service-test`, `grammar:association`, `grammar:derived-property`, `store:relational-inner-join` | intermediate |
+| `relational-legacy-mapping-test` (Phase E) | `execution:legacy-mapping-test`, `execution:test-data` | basic |
 
 ### 1.2 `legend-engine-xt-relationalStore-emit` — `relation-emit-models/`
 
@@ -132,11 +134,16 @@ independently-runnable suites by subject:
 
 ### 1.6 `legend-engine-xts-service/legend-engine-xt-service-emit` (service shapes)
 
-5 descriptors, 37 dynamic tests, all added by Phase E (§3.5). One suite over the
+4 descriptors, 31 dynamic tests, all added by Phase E (§3.5). One suite over the
 conventional `emit-models/` root, driven by `ServiceEMITTests`, so no server-pom
 `includedRelativeSubpaths` override is needed. `service-shared-domain` is the
-reusable bundle (Person class + H2 store + relational mapping) the other four
+reusable bundle (Person class + H2 store + relational mapping) the other three
 depend on; it runs parse + compile only.
+
+Every model here has a Service. Phase E's fourth fixture,
+`relational-legacy-mapping-test`, exercises the *other* deprecated Phase 5 runner
+but involves no Service, so it lives with the relational mappings (§1.1) — see
+the placement rule in `emit-authoring.md` §3.1.
 
 | Descriptor | Non-scaffolding features | Complexity |
 |---|---|---|
@@ -144,7 +151,6 @@ depend on; it runs parse + compile only.
 | `service-multi-execution` | `execution:{multi-execution-service, plan-generation, service, service-test, test-data}` | basic |
 | `service-shared-test-data` | `execution:{data-element, plan-generation, service, service-test, shared-test-data, test-data}` | basic |
 | `service-legacy-test` | `execution:{legacy-service-test, plan-generation, service, test-data}` | basic |
-| `mapping-legacy-test` | `execution:{legacy-mapping-test, test-data}` | basic |
 
 ### 1.7 Test-hosting modules that exist today
 
@@ -337,7 +343,7 @@ covered five capabilities, so the domain's total grew from 17 to 19.
 | `execution:test-data` | ✅ |
 | `execution:multi-execution-service` | ✅ Phase E (`service-multi-execution`, per-key routing proven by keyed test data) |
 | `execution:shared-test-data` | ✅ Phase E (`service-shared-test-data`, one `Data` element feeding two services) |
-| `execution:legacy-mapping-test` | ✅ Phase E (`mapping-legacy-test`; §6.2 taxonomy addition) |
+| `execution:legacy-mapping-test` | ✅ Phase E (`relational-legacy-mapping-test`, in the relational suite; §6.2 taxonomy addition) |
 | `execution:legacy-service-test` | ✅ Phase E (`service-legacy-test`; §6.2 taxonomy addition) |
 | `execution:plan-generation` | ✅ Phase E — the tag existed but was applied nowhere; the three service-bearing Phase E descriptors now carry it. Retro-applying it to the pre-existing service models is a separate metadata pass (§3.5) |
 | `execution:file-generation` | ❌ (real generators exist — Avro/Protobuf/JSON Schema/…; only the fake-SPI framework fixture exercises the path) |
@@ -805,9 +811,10 @@ executability is.
 
 **Applied.** `legend-engine-xts-service/legend-engine-xt-service-emit` was stood
 up with one suite (`emit-models/` → `ServiceEMITTests`), a
-`service-shared-domain` bundle, and 4 fixtures. 37 dynamic tests, all passing,
-checkstyle clean. The module's models are backed by H2 rather than a model store,
-so every fixture executes rather than only compiles.
+`service-shared-domain` bundle, and 3 service fixtures (31 dynamic tests); the
+fourth fixture landed in the **relational** suite (245 dynamic tests, up from
+239). All passing, checkstyle clean. Every model is backed by H2 rather than a
+model store, so each fixture executes rather than only compiles.
 
 | Proposed test | Closes | Feature set (non-scaffolding) |
 |---|---|---|
@@ -815,7 +822,21 @@ so every fixture executes rather than only compiles.
 | ~~`service-post-validation`~~ | — ⛔ not executable by EMIT (see below) | — |
 | `service-shared-test-data` | `execution:shared-test-data` | `execution:{data-element,plan-generation,service,service-test,shared-test-data,test-data}` |
 | `service-legacy-test` | legacy `ServiceTest` path (Phase 5) | `execution:{legacy-service-test,plan-generation,service,test-data}` |
-| `mapping-legacy-test` | legacy `MappingTests` path (Phase 5) | `execution:{legacy-mapping-test,test-data}` |
+| `relational-legacy-mapping-test` → `relational-emit-models/` | legacy `MappingTests` path (Phase 5) | `execution:{legacy-mapping-test,test-data}` |
+
+> **The legacy mapping fixture belongs to the relational suite, not this module.**
+> It was first written here as `mapping-legacy-test`, on the reasoning that the two
+> deprecated Phase 5 runners are siblings and should sit together. That was wrong:
+> the fixture contains no Service, and the runner being deprecated is a property of
+> the *test style*, not a feature area — grouping by it scatters mappings away from
+> the suites that own them. It now lives beside the other relational mappings as
+> `relational-legacy-mapping-test` and reuses `relational-shared-domain`. The general
+> rule, added to `emit-authoring.md` §3.1: a legacy `MappingTests` block goes wherever
+> its mapping kind goes — relational to `relational-emit-models/`, M2M to
+> `m2m-emit-models/`, multi-area to the cross-feature module. **There is no M2M
+> legacy mapping test yet**; `relational-legacy-mapping-test` is the only
+> `MappingTests` block anywhere in the catalog, so the M2M code path through
+> `MappingTestRunner` remains unexercised.
 
 > **Two taxonomy entries were added** (`emit.md` §6.2, Execution):
 > `execution:legacy-mapping-test` and `execution:legacy-service-test`. §4.2 had
@@ -956,7 +977,7 @@ the largest gaps; later phases are gated on standing up modules.
 | **B′** | §3.1b Relation-function gaps (1 of 2 tests — `relation-primary-key` **done**; `relation-binding-transformer` moved to §3.7/Phase G) | No | 1 mapping (`mapping:relation-primary-key`) | Low |
 | **C** | §3.3 Milestoning (1 test — **done**; all-versions-in-range not supported in Legend grammar) | No | `milestoning:bi-temporal` + table-backed milestoning path | Low–Med |
 | **D** | §3.4 Grammar + M2M (10 of 11 tests — **done**; 1 not executable, §3.4a) | `legend-engine-core-emit-tests` (renamed + relocated — §3.4) | 4 grammar + 3 mapping | Med — 1 module |
-| **E** | §3.5 Service shapes (4 of 5 tests — **done**; post-validation not executable) | `legend-engine-xt-service-emit` | 5 execution (multi-execution, shared-test-data, both legacy Phase 5 runners, plan-generation) | Med — 1 module |
+| **E** | §3.5 Service shapes (4 of 5 tests — **done**; post-validation not executable; the legacy *mapping* fixture landed in the relational suite, not this module) | `legend-engine-xt-service-emit` | 5 execution (multi-execution, shared-test-data, both legacy Phase 5 runners, plan-generation) | Med — 1 module |
 | **F** | §3.6 File generation (3 tests) | `legend-engine-xt-generation-emit` | real file generation (Avro/Protobuf/JSON Schema) | Med |
 | **G** | §3.7 External format (3 tests) | format `-emit` module(s) | 3 execution capabilities | Med |
 | **H** | §3.8 Other stores (2 tests) | flatdata + serviceStore `-emit` | 2 store capabilities | Med |
@@ -1039,7 +1060,8 @@ Any genuinely new capability discovered while authoring must be added to
   off-taxonomy tags, and one descriptor (`relational-service-with-join.yaml`) did
   not run at all because its filename lacked the `.emit` infix. Both are now fixed.
 - **Phases B, B′, C, D and E are done** (6 store tests + 1 relation-mapping + 1
-  milestoning + 10 core-feature tests + 4 service-shape tests). Phase D stood up the
+  milestoning + 10 core-feature tests + 3 service-shape tests + 1 legacy relational
+  mapping test). Phase D stood up the
   first new module and closed the grammar domain outright; Phase E stood up the
   second and took execution from the sole remaining concentration to 10/19. Every
   remaining real gap needs a new `-emit` module (F–I: file generation, external
